@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Un Regalo del Corazón - Familia Fokkelman</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+    <!-- NAVEGACIÓN -->
+    <nav>
+        <ul>
+            <li><a href="index.html" class="active">🏠 Home</a></li>
+            <li><a href="galeria.html">🖼️ Gallery</a></li>
+            <li><a href="recorrido.html">📖 Journey <span id="journeyCount" class="journey-count">0</span></a></li>
+            <li><a href="album.html">📚 Album</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <!-- PÁGINA: INICIO (DEDICATORIA) -->
+        <section id="inicio" class="page-section active">
+            <div class="dedicatoria-card">
+                <h1>Para Mamá</h1>
+                <div class="subtitle">Un viaje por los recuerdos más preciados</div>
+                <div class="heart-decoration">❤️</div>
+
+                <div class="dedicatoria-text">
+                    <p>Querida mamá,</p>
+                    <br>
+                    <p>Este regalo es un homenaje a algunos momentos que has compartido con quienes más amas. Cada
+                        fotografía aquí guardada es un pedazo de historia, un instante de felicidad, un recuerdo que
+                        merece ser celebrado.</p>
+                    <br>
+                    <p>Estas imágenes cuentan historias de vidas llena de amor, risas y momentos inolvidables
+                        en familia. Este espacio es para que tú y tus hermanas podáis revivir
+                        juntas esos momentos, añadir recuerdos y mantener viva la memoria familiar.</p>
+                    <br>
+                    <p>Además, dejo un espacio extra para que puedas añadir nuevas imágenes y recuerdos a este tesoro familiar, si así lo quieres.
+                        <br><i><small>Esto todavía está en desarrollo, pero la idea es que podáis contribuir con vuestras propias fotos y momentos especiales.</small></i>
+                    </p>
+                    <br>
+                    <p>
+                        PD: Cualquier sugerencia o idea para mejorar este regalo será más que bienvenida. ¡Espero que lo disfrutes tanto como yo disfruté creándolo para ti!
+                    </p>
+                    <br>
+                    <p>
+                        Espero que este regalo te traiga tanta alegría como la que tú nos has dado a todos nosotros a lo largo de los años.
+                    </p>
+                    <br>
+                    <p>Con mucho amor,<br>Tu hijo</p>
+                </div>
+
+                <div class="heart-decoration">✨</div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/photo-manager.js"></script>
+    <script src="js/lightbox.js"></script>
+    
+    <script>
+        async function actualizarContador() {
+            const contador = document.getElementById('journeyCount');
+            if (contador) {
+                const count = await getJourneyCount();
+                contador.textContent = count;
+            }
+        }
+        
+        function iniciar() {
+            setTimeout(() => {
+                if (isAuthenticated()) {
+                    actualizarContador();
+                } else {
+                    setTimeout(iniciar, 500);
+                }
+            }, 100);
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', iniciar);
+        } else {
+            iniciar();
+        }
+    </script>
+</body>
+
+</html>
