@@ -22,6 +22,13 @@
                 <p>All your saved memories in one place</p>
             </div>
 
+            <!-- Botón para añadir nueva foto -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <button id="btnAddNewPhoto" class="btn-add-new-photo" onclick="abrirModalNuevaFoto()">
+                    📷 Add New Photo
+                </button>
+            </div>
+
             <div id="albumGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(450px, 1fr)); gap: 2rem; margin-top: 2rem;">
                 <p>Cargando álbum...</p>
             </div>
@@ -51,20 +58,17 @@
             if (!grid) return;
 
             try {
+                console.log('🔄 Cargando álbum...');
                 const fotosRecorrido = await getJourneyPhotos();
+                console.log('📸 Fotos en journey:', fotosRecorrido);
                 grid.innerHTML = '';
 
                 if (!fotosRecorrido || fotosRecorrido.length === 0) {
                     grid.innerHTML = `
-                        <div style="background: white; padding: 3rem; border-radius: 16px; text-align: center; grid-column: 1 / -1;">
-                            <h3 style="color: var(--primary); margin-bottom: 1rem;">📚 Empty Album</h3>
-                            <p style="font-size: 1.1rem; color: #64748b; margin-bottom: 1.5rem;">
-                                You haven't added photos with memories yet.
-                            </p>
-                            <p style="font-size: 1rem; color: #94a3b8;">
-                                Go to <a href="recorrido.html" style="color: var(--primary); font-weight: bold;">Journey</a> 
-                                and save the memories of your favorite photos.
-                            </p>
+                        <div class="empty-state" style="grid-column: 1 / -1;">
+                            <h3>📚 Empty Album</h3>
+                            <p>You haven't added photos with memories yet.</p>
+                            <p>Go to <a href="recorrido.html">Journey</a> and save the memories of your favorite photos.</p>
                         </div>
                     `;
                     return;
@@ -72,22 +76,26 @@
 
                 // Cargar todas las fotos con sus recuerdos
                 for (let i = 0; i < fotosRecorrido.length; i++) {
-                    const photoPath = fotosRecorrido[i];
-                    const savedInfo = await getPhotoInfo(photoPath);
+                    const photoId = fotosRecorrido[i];
+                    const savedInfo = await getPhotoInfo(photoId);
+                    
+                    // Convertir el ID de Firebase de vuelta al path de Cloudinary
+                    const photoPath = photoId.replace(/__/g, '/');
+                    
+                    // Todas las fotos ahora usan Cloudinary
+                    const imageUrl = getCloudinaryUrl(photoPath, 'w_600,h_600,c_fill/');
 
                     const card = document.createElement('div');
-                    card.style.cssText = 'background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.3s;';
-                    card.onmouseenter = function() { this.style.transform = 'translateY(-5px)'; };
-                    card.onmouseleave = function() { this.style.transform = 'translateY(0)'; };
+                    card.className = 'album-card';
 
                     // Imagen
                     const imgContainer = document.createElement('div');
-                    imgContainer.style.cssText = 'height: 400px; overflow: hidden; cursor: pointer;';
+                    imgContainer.className = 'album-img-container';
                     
                     const img = document.createElement('img');
-                    img.src = getCloudinaryUrl(photoPath, 'w_600,h_600,c_fill/');
-                    img.alt = `Foto ${i + 1}`;
-                    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+                    img.className = 'album-img';
+                    img.src = imageUrl;
+                    img.alt = `Photo ${i + 1}`;
                     img.onclick = function() {
                         openLightbox(getCloudinaryUrl(photoPath, 'q_auto,f_auto/'));
                     };
@@ -96,19 +104,19 @@
 
                     // Información
                     const infoContainer = document.createElement('div');
-                    infoContainer.style.cssText = 'padding: 1.5rem;';
+                    infoContainer.className = 'album-info';
 
                     const numero = document.createElement('div');
-                    numero.textContent = `Foto ${i + 1}`;
-                    numero.style.cssText = 'color: var(--primary); font-weight: bold; margin-bottom: 1rem; font-size: 1.1rem;';
+                    numero.className = 'album-photo-number';
+                    numero.textContent = `Photo ${i + 1}`;
                     infoContainer.appendChild(numero);
 
                     if (savedInfo && (savedInfo.description || savedInfo.year || savedInfo.place)) {
                         if (savedInfo.description) {
                             const desc = document.createElement('div');
                             desc.innerHTML = `
-                                <strong style="color: #64748b;">📝 Description:</strong>
-                                <p style="margin: 0.5rem 0 1rem; color: #334155; line-height: 1.6;">${savedInfo.description}</p>
+                                <strong style="color: var(--warm-brown);">📝 Description:</strong>
+                                <p style="margin: 0.5rem 0 1rem; color: var(--charcoal); line-height: 1.6;">${savedInfo.description}</p>
                             `;
                             infoContainer.appendChild(desc);
                         }
@@ -116,8 +124,8 @@
                         if (savedInfo.year) {
                             const year = document.createElement('div');
                             year.innerHTML = `
-                                <strong style="color: #64748b;">📅 Date:</strong>
-                                <p style="margin: 0.5rem 0 1rem; color: #334155;">${savedInfo.year}</p>
+                                <strong style="color: var(--warm-brown);">📅 Date:</strong>
+                                <p style="margin: 0.5rem 0 1rem; color: var(--charcoal);">${savedInfo.year}</p>
                             `;
                             infoContainer.appendChild(year);
                         }
@@ -125,17 +133,95 @@
                         if (savedInfo.place) {
                             const place = document.createElement('div');
                             place.innerHTML = `
-                                <strong style="color: #64748b;">📍 Location:</strong>
-                                <p style="margin: 0.5rem 0 1rem; color: #334155;">${savedInfo.place}</p>
+                                <strong style="color: var(--warm-brown);">📍 Location:</strong>
+                                <p style="margin: 0.5rem 0 1rem; color: var(--charcoal);">${savedInfo.place}</p>
                             `;
                             infoContainer.appendChild(place);
                         }
                     } else {
                         const sinInfo = document.createElement('p');
+                        sinInfo.className = 'album-no-info';
                         sinInfo.textContent = 'No saved memories yet';
-                        sinInfo.style.cssText = 'color: #94a3b8; font-style: italic;';
                         infoContainer.appendChild(sinInfo);
                     }
+
+                    // Contenedor de botones
+                    const btnContainer = document.createElement('div');
+                    btnContainer.className = 'album-btn-container';
+
+                    // Botón de editar
+                    const btnEdit = document.createElement('button');
+                    btnEdit.className = 'btn-edit-album';
+                    btnEdit.textContent = '✏️ Edit';
+                    btnEdit.onclick = async function() {
+                        // Crear formulario de edición
+                        const form = document.createElement('div');
+                        form.className = 'edit-modal';
+                        
+                        const formContent = document.createElement('div');
+                        formContent.className = 'edit-modal-content';
+                        
+                        formContent.innerHTML = `
+                            <h3>Edit Memory</h3>
+                            <div class="input-group">
+                                <label>📝 Description:</label>
+                                <textarea id="editDesc">${savedInfo?.description || ''}</textarea>
+                            </div>
+                            <div class="input-group">
+                                <label>📅 Date:</label>
+                                <input type="text" id="editYear" value="${savedInfo?.year || ''}">
+                            </div>
+                            <div class="input-group">
+                                <label>📍 Location:</label>
+                                <input type="text" id="editPlace" value="${savedInfo?.place || ''}">
+                            </div>
+                            <div class="edit-modal-buttons">
+                                <button id="btnSaveEdit" class="btn-save-edit">💾 Save</button>
+                                <button id="btnCancelEdit" class="btn-cancel-edit">✖️ Cancel</button>
+                            </div>
+                        `;
+                        
+                        form.appendChild(formContent);
+                        document.body.appendChild(form);
+                        
+                        document.getElementById('btnSaveEdit').onclick = async function() {
+                            const desc = document.getElementById('editDesc').value.trim();
+                            const year = document.getElementById('editYear').value.trim();
+                            const place = document.getElementById('editPlace').value.trim();
+                            
+                            await savePhotoInfo(photoId, { description: desc, year: year, place: place });
+                            document.body.removeChild(form);
+                            await cargarAlbum();
+                        };
+                        
+                        document.getElementById('btnCancelEdit').onclick = function() {
+                            document.body.removeChild(form);
+                        };
+                        
+                        form.onclick = function(e) {
+                            if (e.target === form) {
+                                document.body.removeChild(form);
+                            }
+                        };
+                    };
+                    btnContainer.appendChild(btnEdit);
+
+                    // Botón de eliminar
+                    const btnDelete = document.createElement('button');
+                    btnDelete.className = 'btn-delete-album';
+                    btnDelete.textContent = '🗑️ Remove';
+                    btnDelete.onclick = async function() {
+                        if (confirm('Remove this photo from the album? This will delete its saved memory and remove it from your journey. (The original photo will remain in Cloudinary)')) {
+                            // Eliminar metadata y del journey
+                            await deletePhotoInfo(photoId);
+                            await removeFromJourney(photoId);
+                            await cargarAlbum();
+                            await actualizarContador();
+                        }
+                    };
+                    btnContainer.appendChild(btnDelete);
+
+                    infoContainer.appendChild(btnContainer);
 
                     card.appendChild(infoContainer);
                     grid.appendChild(card);
@@ -153,6 +239,201 @@
                 const count = await getJourneyCount();
                 contador.textContent = count;
             }
+        }
+
+        // Función para abrir modal de nueva foto
+        function abrirModalNuevaFoto() {
+            const modal = document.createElement('div');
+            modal.className = 'edit-modal';
+            
+            const modalContent = document.createElement('div');
+            modalContent.className = 'edit-modal-content';
+            
+            modalContent.innerHTML = `
+                <h3>📷 Add New Photo</h3>
+                <div class="input-group">
+                    <label>Select photo from your device:</label>
+                    <input type="file" id="newPhotoFile" accept="image/*" style="width: 100%; padding: 0.75rem; border: 2px solid var(--warm-brown); border-radius: 6px; font-family: Georgia, serif;">
+                    <div id="imagePreview" style="margin-top: 1rem; max-height: 300px; overflow: hidden; border-radius: 8px; display: none;">
+                        <img id="previewImg" style="width: 100%; object-fit: contain;" />
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>📝 Description:</label>
+                    <textarea id="newDesc" placeholder="Describe this memory..."></textarea>
+                </div>
+                <div class="input-group">
+                    <label>📅 Date:</label>
+                    <input type="text" id="newYear" placeholder="E.g.: 2024">
+                </div>
+                <div class="input-group">
+                    <label>📍 Location:</label>
+                    <input type="text" id="newPlace" placeholder="E.g.: Home, Amsterdam">
+                </div>
+                <div class="edit-modal-buttons">
+                    <button id="btnSaveNewPhoto" class="btn-save-edit">💾 Add to Album</button>
+                    <button id="btnCancelNewPhoto" class="btn-cancel-edit">✖️ Cancel</button>
+                </div>
+            `;
+            
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            // Preview de imagen
+            document.getElementById('newPhotoFile').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        document.getElementById('previewImg').src = event.target.result;
+                        document.getElementById('imagePreview').style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Guardar nueva foto
+            document.getElementById('btnSaveNewPhoto').onclick = async function() {
+                const fileInput = document.getElementById('newPhotoFile');
+                const desc = document.getElementById('newDesc').value.trim();
+                const year = document.getElementById('newYear').value.trim();
+                const place = document.getElementById('newPlace').value.trim();
+                
+                if (!fileInput.files[0]) {
+                    alert('Please select a photo');
+                    return;
+                }
+                
+                try {
+                    console.log('Iniciando proceso de subida de foto...');
+                    // Comprimir y convertir a base64
+                    const file = fileInput.files[0];
+                    console.log('Archivo seleccionado:', file.name, file.size, 'bytes');
+                    
+                    // Subir a Cloudinary
+                    console.log('Subiendo a Cloudinary...');
+                    const cloudinaryData = await subirACloudinary(file);
+                    console.log('✓ Foto subida a Cloudinary:', cloudinaryData);
+                    
+                    // Usar el public_id directamente de la respuesta de Cloudinary
+                    const publicId = cloudinaryData.public_id;
+                    console.log('ID de foto (public_id):', publicId);
+                    
+                    // Construir el path completo con extensión
+                    const photoPath = publicId + '.' + cloudinaryData.format;
+                    console.log('Photo path completo:', photoPath);
+                    
+                    // Convertir el path para Firebase (reemplazar / con __)
+                    const firebaseId = photoPath.replace(/\//g, '__');
+                    console.log('Firebase ID:', firebaseId);
+                    
+                    // Añadir al journey
+                    console.log('Añadiendo al journey con ID:', firebaseId);
+                    const addResult = await addToJourney(firebaseId);
+                    console.log('Resultado addToJourney:', addResult);
+                    
+                    console.log('Guardando metadata...');
+                    const saveResult = await savePhotoInfo(firebaseId, { description: desc, year: year, place: place });
+                    console.log('Resultado savePhotoInfo:', saveResult);
+                    
+                    // Verificar que se guardó
+                    console.log('Verificando que se guardó...');
+                    const journeyPhotos = await getJourneyPhotos();
+                    console.log('Fotos en journey ahora:', journeyPhotos);
+                    const savedInfo = await getPhotoInfo(firebaseId);
+                    console.log('Metadata guardada:', savedInfo);
+                    
+                    document.body.removeChild(modal);
+                    await cargarAlbum();
+                    await actualizarContador();
+                    console.log('✓ Proceso completado exitosamente');
+                    alert('Photo added to album! ✨');
+                } catch (error) {
+                    console.error('Error completo:', error);
+                    console.error('Stack trace:', error.stack);
+                    alert('Error adding photo: ' + error.message + '\nCheck console for details.');
+                }
+            };
+            
+            document.getElementById('btnCancelNewPhoto').onclick = function() {
+                document.body.removeChild(modal);
+            };
+            
+            modal.onclick = function(e) {
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
+                }
+            };
+        }
+        
+        // Función para subir imagen a Cloudinary
+        async function subirACloudinary(file) {
+            // IMPORTANTE: Necesitas crear un "Upload Preset" sin firmar en tu cuenta de Cloudinary
+            // Ve a Settings > Upload > Add upload preset > Unsigned
+            // Usa el nombre del preset aquí:
+            const uploadPreset = 'fokkelman_unsigned'; // Cambia esto por tu preset
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', uploadPreset);
+            formData.append('folder', 'family_custom'); // Carpeta en Cloudinary
+            formData.append('public_id', 'custom_fokkelman_' + Date.now()); // ID único
+            
+            const response = await fetch(
+                `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+                {
+                    method: 'POST',
+                    body: formData
+                }
+            );
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error('Cloudinary upload failed: ' + (error.error?.message || 'Unknown error'));
+            }
+            
+            const data = await response.json();
+            // Devolver el objeto completo con public_id y formato
+            return {
+                secure_url: data.secure_url,
+                public_id: data.public_id,
+                format: data.format
+            };
+        }
+        
+        // Función para comprimir imagen (ya no se usa pero la dejamos por compatibilidad)
+        async function comprimirImagen(file, maxWidth) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        // Redimensionar si es necesario
+                        if (width > maxWidth) {
+                            height = (height * maxWidth) / width;
+                            width = maxWidth;
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Convertir a base64 con compresión
+                        const base64 = canvas.toDataURL('image/jpeg', 0.85);
+                        resolve(base64);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
         }
 
         function iniciar() {

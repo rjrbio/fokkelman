@@ -268,11 +268,21 @@ function deletePhotoInfoLocal(photoId) {
 // ============================================
 
 /**
- * Obtiene el número de fotos en el recorrido
+ * Obtiene el número de fotos en el recorrido SIN información guardada
  */
 async function getJourneyCount() {
-    const journey = await getJourneyPhotos();
-    return journey.length;
+    const allJourneyPhotos = await getJourneyPhotos();
+    
+    // Contar solo las fotos que NO tienen metadata guardada
+    let count = 0;
+    for (const photoId of allJourneyPhotos) {
+        const info = await getPhotoInfo(photoId);
+        if (!info || (!info.description && !info.year && !info.place)) {
+            count++;
+        }
+    }
+    
+    return count;
 }
 
 /**

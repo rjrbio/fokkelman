@@ -62,29 +62,34 @@
 
             try {
                 console.log('2. Obteniendo fotos del recorrido...');
-                fotosRecorrido = await getJourneyPhotos();
-                console.log('3. Fotos en recorrido:', fotosRecorrido.length);
+                const todasLasFotos = await getJourneyPhotos();
+                console.log('3. Fotos en recorrido:', todasLasFotos.length);
+                
+                // Filtrar solo las fotos que NO tienen información guardada
+                fotosRecorrido = [];
+                for (const photoPath of todasLasFotos) {
+                    const info = await getPhotoInfo(photoPath);
+                    if (!info) {
+                        fotosRecorrido.push(photoPath);
+                    }
+                }
+                console.log('4. Fotos sin memoria guardada:', fotosRecorrido.length);
                 
                 container.innerHTML = '';
 
                 if (!fotosRecorrido || fotosRecorrido.length === 0) {
-                    console.log('4. Recorrido vacío');
+                    console.log('5. Recorrido vacío o todas las fotos tienen memoria');
                     container.innerHTML = `
-                        <div style="background: white; padding: 3rem; border-radius: 16px; text-align: center;">
-                            <h3 style="color: var(--primary); margin-bottom: 1rem;">📖 Empty Journey</h3>
-                            <p style="font-size: 1.1rem; color: #64748b; margin-bottom: 1.5rem;">
-                                You haven't added photos to your journey yet.
-                            </p>
-                            <p style="font-size: 1rem; color: #94a3b8;">
-                                Go to the <a href="galeria.html" style="color: var(--primary); font-weight: bold;">Gallery</a> 
-                                and click "📖 Add to journey" on the photos you want to remember.
-                            </p>
+                        <div class="empty-state">
+                            <h3>📚 All memories saved!</h3>
+                            <p>All your journey photos have memories saved.</p>
+                            <p>Go to the <a href="album.html">Album</a> to view all your saved memories, or add more photos from the <a href="galeria.html">Gallery</a>.</p>
                         </div>
                     `;
                     return;
                 }
 
-                console.log('5. Mostrando foto', indiceActual + 1, 'de', fotosRecorrido.length);
+                console.log('6. Mostrando foto', indiceActual + 1, 'de', fotosRecorrido.length);
                 mostrarFoto();
                 
             } catch (error) {
@@ -104,17 +109,16 @@
             container.innerHTML = '';
             
             const photoItem = document.createElement('div');
-            photoItem.className = 'photo-item';
-            photoItem.style.cssText = 'background: white; padding: 2rem; border-radius: 16px; max-width: 800px; margin: 0 auto;';
+            photoItem.className = 'journey-photo-item';
             
             // Contenedor de imagen
             const photoContainer = document.createElement('div');
-            photoContainer.style.cssText = 'margin-bottom: 2rem;';
+            photoContainer.className = 'journey-photo-container';
             
             const img = document.createElement('img');
+            img.className = 'journey-photo-img';
             img.src = getCloudinaryUrl(photoPath, 'q_auto,f_auto/');
             img.alt = `Foto ${indiceActual + 1}`;
-            img.style.cssText = 'width: 100%; border-radius: 12px; cursor: pointer;';
             img.onclick = function() {
                 openLightbox(getCloudinaryUrl(photoPath, 'q_auto,f_auto/'));
             };
@@ -123,11 +127,11 @@
             
             // Información
             const infoDiv = document.createElement('div');
-            infoDiv.style.cssText = 'margin-bottom: 2rem;';
+            infoDiv.className = 'journey-info-div';
             
             const titulo = document.createElement('h3');
+            titulo.className = 'journey-title';
             titulo.textContent = `Foto ${indiceActual + 1} de ${fotosRecorrido.length}`;
-            titulo.style.cssText = 'color: var(--primary); margin-bottom: 1rem;';
             infoDiv.appendChild(titulo);
             
             if (savedInfo) {
@@ -156,12 +160,11 @@
                 infoDiv.appendChild(desc);
                 
                 const btnContainer = document.createElement('div');
-                btnContainer.style.cssText = 'display: flex; gap: 0.5rem;';
+                btnContainer.className = 'journey-btn-container';
                 
                 const btnEdit = document.createElement('button');
                 btnEdit.textContent = '✏️ Edit information';
-                btnEdit.className = 'btn-save';
-                btnEdit.style.cssText = 'flex: 1; background: #64748b;';
+                btnEdit.className = 'btn-save btn-edit-journey';
                 btnEdit.onclick = async function() {
                     await deletePhotoInfo(photoPath);
                     mostrarFoto();
@@ -214,12 +217,11 @@
                 infoDiv.appendChild(form);
                 
                 const btnContainer = document.createElement('div');
-                btnContainer.style.cssText = 'display: flex; gap: 0.5rem;';
+                btnContainer.className = 'journey-btn-container';
                 
                 const btnSave = document.createElement('button');
                 btnSave.textContent = '💾 Save Memory';
                 btnSave.className = 'btn-save';
-                btnSave.style.cssText = 'flex: 1;';
                 btnSave.onclick = async function() {
                     const description = document.getElementById('desc').value;
                     const year = document.getElementById('year').value;
@@ -231,14 +233,28 @@
                     }
                     
                     await savePhotoInfo(photoPath, { description, year, place });
-                    alert('Memory saved! ❤️');
-                    mostrarFoto();
+                    alert('Memory saved! ✨ This photo is now in your Album.');
+                    
+                    // Remover de la lista local de Journey (ya no debe mostrarse aquí)
+                    fotosRecorrido = fotosRecorrido.filter(p => p !== photoPath);
+                    
+                    if (fotosRecorrido.length === 0) {
+                        // Si no quedan fotos, recargar para mostrar mensaje vacío
+                        await cargarRecorrido();
+                    } else {
+                        // Ajustar índice si es necesario
+                        if (indiceActual >= fotosRecorrido.length) {
+                            indiceActual = fotosRecorrido.length - 1;
+                        }
+                        await mostrarFoto();
+                    }
+                    
+                    await actualizarContador();
                 };
                 
                 const btnRemove = document.createElement('button');
                 btnRemove.textContent = '🗑️ Remove from Journey';
                 btnRemove.className = 'btn-delete';
-                btnRemove.style.cssText = 'flex: 1;';
                 btnRemove.onclick = async function() {
                     if (confirm('Remove this photo from the journey?')) {
                         await removeFromJourney(photoPath);
@@ -264,7 +280,7 @@
             
             // Botones de navegación
             const navDiv = document.createElement('div');
-            navDiv.style.cssText = 'display: flex; gap: 1rem; justify-content: space-between;';
+            navDiv.className = 'journey-nav-buttons';
             
             const btnPrev = document.createElement('button');
             btnPrev.textContent = '← Previous';

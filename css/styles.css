@@ -656,6 +656,295 @@ nav a.active {
 }
 
 /* ============================================
+   ALBUM - TARJETAS Y BOTONES
+   ============================================ */
+
+.album-card {
+    background: var(--light-cream);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(61, 61, 61, 0.12);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid rgba(201, 169, 97, 0.2);
+}
+
+.album-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(61, 61, 61, 0.18);
+}
+
+.album-img-container {
+    height: 400px;
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--cream);
+}
+
+.album-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: var(--cream);
+}
+
+.album-info {
+    padding: 1.5rem;
+}
+
+.album-photo-number {
+    color: var(--deep-brown);
+    font-weight: 600;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.album-no-info {
+    color: var(--warm-brown);
+    font-style: italic;
+    opacity: 0.7;
+}
+
+.album-btn-container {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.btn-add-new-photo {
+    background: var(--soft-gold);
+    color: var(--deep-brown);
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1.1rem;
+    font-family: Georgia, serif;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(201, 169, 97, 0.3);
+}
+
+.btn-add-new-photo:hover {
+    background: #b89a4f;
+    box-shadow: 0 6px 16px rgba(201, 169, 97, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-edit-album {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-family: Georgia, serif;
+    background: var(--sage-green);
+    color: white;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(61, 61, 61, 0.15);
+}
+
+.btn-edit-album:hover {
+    background: #8a9e76;
+    box-shadow: 0 3px 10px rgba(61, 61, 61, 0.25);
+    transform: translateY(-2px);
+}
+
+.btn-delete-album {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-family: Georgia, serif;
+    background: var(--warm-brown);
+    color: var(--light-cream);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(61, 61, 61, 0.15);
+}
+
+.btn-delete-album:hover {
+    background: var(--deep-brown);
+    box-shadow: 0 3px 10px rgba(61, 61, 61, 0.25);
+    transform: translateY(-2px);
+}
+
+/* Modal de edición */
+.edit-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(92, 74, 58, 0.9);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    animation: fadeInModal 0.3s forwards;
+}
+
+@keyframes fadeInModal {
+    to {
+        opacity: 1;
+    }
+}
+
+.edit-modal-content {
+    background: var(--light-cream);
+    padding: 2rem;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 100%;
+    border: 2px solid var(--soft-gold);
+    transform: scale(0.9);
+    animation: scaleInModal 0.3s forwards;
+}
+
+@keyframes scaleInModal {
+    to {
+        transform: scale(1);
+    }
+}
+
+.edit-modal h3 {
+    color: var(--deep-brown);
+    margin-bottom: 1.5rem;
+}
+
+.edit-modal-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-save-edit {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-family: Georgia, serif;
+    background: var(--sage-green);
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.btn-save-edit:hover {
+    background: #8a9e76;
+}
+
+.btn-cancel-edit {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-family: Georgia, serif;
+    background: var(--dusty-blue);
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.btn-cancel-edit:hover {
+    background: #6d7b8d;
+}
+
+/* ============================================
+   RECORRIDO - ELEMENTOS
+   ============================================ */
+
+.journey-photo-item {
+    background: var(--light-cream);
+    padding: 2rem;
+    border-radius: 12px;
+    max-width: 800px;
+    margin: 0 auto;
+    box-shadow: 0 6px 20px rgba(61, 61, 61, 0.12);
+    border: 2px solid rgba(201, 169, 97, 0.3);
+}
+
+.journey-photo-container {
+    margin-bottom: 2rem;
+}
+
+.journey-photo-img {
+    width: 100%;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.journey-info-div {
+    margin-bottom: 2rem;
+}
+
+.journey-title {
+    color: var(--deep-brown);
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.journey-btn-container {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-edit-journey {
+    flex: 1;
+    background: var(--dusty-blue);
+    color: white;
+}
+
+.btn-edit-journey:hover {
+    background: #6d7b8d;
+}
+
+.journey-nav-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-top: 2rem;
+}
+
+/* Mensajes de estado */
+.empty-state {
+    background: var(--light-cream);
+    padding: 3rem;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(61, 61, 61, 0.1);
+    border: 2px solid rgba(201, 169, 97, 0.3);
+}
+
+.empty-state h3 {
+    color: var(--deep-brown);
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.empty-state p {
+    font-size: 1.05rem;
+    color: var(--charcoal);
+    margin-bottom: 1rem;
+    line-height: 1.6;
+}
+
+.empty-state a {
+    color: var(--warm-brown);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.empty-state a:hover {
+    color: var(--deep-brown);
+    text-decoration: underline;
+}
+
+/* ============================================
    RESPONSIVE
    ============================================ */
 
