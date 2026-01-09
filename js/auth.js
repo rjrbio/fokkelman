@@ -45,72 +45,85 @@ function showLoginScreen() {
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--cream) 0%, var(--dusty-blue) 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 10000;
         ">
             <div style="
-                background: white;
-                border-radius: 20px;
+                background: var(--cream);
+                border-radius: 12px;
                 padding: 3rem;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                max-width: 400px;
+                box-shadow: 0 8px 24px rgba(92, 74, 58, 0.2);
+                border: 3px solid var(--soft-gold);
+                max-width: 450px;
                 width: 90%;
                 text-align: center;
             ">
                 <h1 style="
                     font-size: 2.5rem;
-                    color: var(--primary);
-                    margin-bottom: 1rem;
-                    font-family: 'Brush Script MT', cursive;
-                ">Galería Familiar</h1>
+                    color: var(--warm-brown);
+                    margin-bottom: 0.5rem;
+                    font-family: Georgia, serif;
+                    font-weight: normal;
+                ">Fokkelman Gallery</h1>
                 
-                <div style="font-size: 3rem; margin: 1.5rem 0;">🔒</div>
+                <div style="
+                    font-size: 3rem; 
+                    margin: 1.5rem 0;
+                    color: var(--soft-gold);
+                ">📸</div>
                 
                 <p style="
                     font-size: 1.1rem;
-                    color: #64748b;
+                    color: var(--charcoal);
                     margin-bottom: 2rem;
-                ">Por favor, ingresa la palabra de acceso</p>
+                    font-family: Georgia, serif;
+                ">Please enter the access word</p>
                 
                 <form id="loginForm" onsubmit="handleLogin(event)">
                     <input 
                         type="password" 
                         id="passwordInput"
-                        placeholder="Palabra de acceso"
+                        placeholder="Access word"
                         style="
                             width: 100%;
-                            padding: 1rem;
-                            border: 2px solid #e2e8f0;
-                            border-radius: 8px;
+                            padding: 1rem 1.5rem;
+                            border: 2px solid var(--warm-brown);
+                            border-radius: 6px;
                             font-size: 1.1rem;
-                            margin-bottom: 1rem;
-                            font-family: inherit;
+                            margin-bottom: 1.5rem;
+                            font-family: Georgia, serif;
+                            background: white;
+                            color: var(--charcoal);
+                            transition: all 0.3s ease;
                         "
                         autofocus
                     />
                     
                     <button type="submit" style="
                         width: 100%;
-                        background: linear-gradient(135deg, var(--primary), var(--secondary));
+                        background: var(--soft-gold);
                         color: white;
                         padding: 1rem 2rem;
                         border: none;
-                        border-radius: 8px;
+                        border-radius: 6px;
                         font-size: 1.1rem;
                         font-weight: 600;
                         cursor: pointer;
-                        transition: transform 0.3s;
-                    ">Acceder</button>
+                        font-family: Georgia, serif;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 4px 12px rgba(201, 169, 97, 0.3);
+                    ">Access to Memories</button>
                     
                     <div id="errorMessage" style="
-                        color: #ef4444;
+                        color: #b91c1c;
                         margin-top: 1rem;
                         font-weight: 600;
                         display: none;
-                    ">❌ Palabra de acceso incorrecta</div>
+                        font-family: Georgia, serif;
+                    ">❌ Incorrect access word</div>
                 </form>
             </div>
         </div>

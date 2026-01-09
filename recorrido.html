@@ -23,7 +23,7 @@
             </div>
 
             <div class="photo-journey" id="photoJourney">
-                <p>Cargando recorrido...</p>
+                <p>Loading journey...</p>
             </div>
         </section>
     </div>
@@ -46,24 +46,15 @@
     <script src="js/lightbox.js"></script>
     
     <script>
-        console.log('Iniciando recorrido...');
-        
         let indiceActual = 0;
         let fotosRecorrido = [];
         
         async function cargarRecorrido() {
-            console.log('1. cargarRecorrido() iniciado');
-            
             const container = document.getElementById('photoJourney');
-            if (!container) {
-                console.error('No se encontró photoJourney');
-                return;
-            }
+            if (!container) return;
 
             try {
-                console.log('2. Obteniendo fotos del recorrido...');
                 const todasLasFotos = await getJourneyPhotos();
-                console.log('3. Fotos en recorrido:', todasLasFotos.length);
                 
                 // Filtrar solo las fotos que NO tienen información guardada
                 fotosRecorrido = [];
@@ -73,12 +64,10 @@
                         fotosRecorrido.push(photoPath);
                     }
                 }
-                console.log('4. Fotos sin memoria guardada:', fotosRecorrido.length);
                 
                 container.innerHTML = '';
 
                 if (!fotosRecorrido || fotosRecorrido.length === 0) {
-                    console.log('5. Recorrido vacío o todas las fotos tienen memoria');
                     container.innerHTML = `
                         <div class="empty-state">
                             <h3>📚 All memories saved!</h3>
@@ -89,7 +78,6 @@
                     return;
                 }
 
-                console.log('6. Mostrando foto', indiceActual + 1, 'de', fotosRecorrido.length);
                 mostrarFoto();
                 
             } catch (error) {
@@ -102,9 +90,6 @@
             const container = document.getElementById('photoJourney');
             const photoPath = fotosRecorrido[indiceActual];
             const savedInfo = await getPhotoInfo(photoPath);
-            
-            console.log('Mostrando foto:', photoPath);
-            console.log('Info guardada:', savedInfo);
             
             container.innerHTML = '';
             
@@ -324,11 +309,9 @@
         function iniciar() {
             setTimeout(() => {
                 if (isAuthenticated()) {
-                    console.log('Usuario autenticado, cargando recorrido...');
                     actualizarContador();
                     cargarRecorrido();
                 } else {
-                    console.log('Esperando autenticación...');
                     setTimeout(iniciar, 500);
                 }
             }, 100);

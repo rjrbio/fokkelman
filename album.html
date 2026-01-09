@@ -30,7 +30,7 @@
             </div>
 
             <div id="albumGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(450px, 1fr)); gap: 2rem; margin-top: 2rem;">
-                <p>Cargando álbum...</p>
+                <p>Loading album...</p>
             </div>
         </section>
     </div>
@@ -58,9 +58,7 @@
             if (!grid) return;
 
             try {
-                console.log('🔄 Cargando álbum...');
                 const fotosRecorrido = await getJourneyPhotos();
-                console.log('📸 Fotos en journey:', fotosRecorrido);
                 grid.innerHTML = '';
 
                 if (!fotosRecorrido || fotosRecorrido.length === 0) {
@@ -305,53 +303,30 @@
                 }
                 
                 try {
-                    console.log('Iniciando proceso de subida de foto...');
-                    // Comprimir y convertir a base64
                     const file = fileInput.files[0];
-                    console.log('Archivo seleccionado:', file.name, file.size, 'bytes');
                     
                     // Subir a Cloudinary
-                    console.log('Subiendo a Cloudinary...');
                     const cloudinaryData = await subirACloudinary(file);
-                    console.log('✓ Foto subida a Cloudinary:', cloudinaryData);
                     
                     // Usar el public_id directamente de la respuesta de Cloudinary
                     const publicId = cloudinaryData.public_id;
-                    console.log('ID de foto (public_id):', publicId);
                     
                     // Construir el path completo con extensión
                     const photoPath = publicId + '.' + cloudinaryData.format;
-                    console.log('Photo path completo:', photoPath);
                     
                     // Convertir el path para Firebase (reemplazar / con __)
                     const firebaseId = photoPath.replace(/\//g, '__');
-                    console.log('Firebase ID:', firebaseId);
                     
-                    // Añadir al journey
-                    console.log('Añadiendo al journey con ID:', firebaseId);
-                    const addResult = await addToJourney(firebaseId);
-                    console.log('Resultado addToJourney:', addResult);
-                    
-                    console.log('Guardando metadata...');
-                    const saveResult = await savePhotoInfo(firebaseId, { description: desc, year: year, place: place });
-                    console.log('Resultado savePhotoInfo:', saveResult);
-                    
-                    // Verificar que se guardó
-                    console.log('Verificando que se guardó...');
-                    const journeyPhotos = await getJourneyPhotos();
-                    console.log('Fotos en journey ahora:', journeyPhotos);
-                    const savedInfo = await getPhotoInfo(firebaseId);
-                    console.log('Metadata guardada:', savedInfo);
+                    // Añadir al journey y guardar metadata
+                    await addToJourney(firebaseId);
+                    await savePhotoInfo(firebaseId, { description: desc, year: year, place: place });
                     
                     document.body.removeChild(modal);
                     await cargarAlbum();
                     await actualizarContador();
-                    console.log('✓ Proceso completado exitosamente');
                     alert('Photo added to album! ✨');
                 } catch (error) {
-                    console.error('Error completo:', error);
-                    console.error('Stack trace:', error.stack);
-                    alert('Error adding photo: ' + error.message + '\nCheck console for details.');
+                    alert('Error adding photo: ' + error.message);
                 }
             };
             
@@ -368,10 +343,7 @@
         
         // Función para subir imagen a Cloudinary
         async function subirACloudinary(file) {
-            // IMPORTANTE: Necesitas crear un "Upload Preset" sin firmar en tu cuenta de Cloudinary
-            // Ve a Settings > Upload > Add upload preset > Unsigned
-            // Usa el nombre del preset aquí:
-            const uploadPreset = 'fokkelman_unsigned'; // Cambia esto por tu preset
+            const uploadPreset = 'fokkelman_unsigned';
             
             const formData = new FormData();
             formData.append('file', file);
@@ -401,41 +373,6 @@
             };
         }
         
-        // Función para comprimir imagen (ya no se usa pero la dejamos por compatibilidad)
-        async function comprimirImagen(file, maxWidth) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
-                        
-                        // Redimensionar si es necesario
-                        if (width > maxWidth) {
-                            height = (height * maxWidth) / width;
-                            width = maxWidth;
-                        }
-                        
-                        canvas.width = width;
-                        canvas.height = height;
-                        
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        
-                        // Convertir a base64 con compresión
-                        const base64 = canvas.toDataURL('image/jpeg', 0.85);
-                        resolve(base64);
-                    };
-                    img.onerror = reject;
-                    img.src = e.target.result;
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-        }
-
         function iniciar() {
             setTimeout(() => {
                 if (isAuthenticated()) {

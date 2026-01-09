@@ -41,7 +41,6 @@ async function addToJourney(photoId) {
                 addedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 photoId: photoId
             });
-            console.log('✓ Foto añadida al recorrido en Firebase');
             return true;
         } catch (error) {
             console.error('Error añadiendo a Firebase:', error);
@@ -68,7 +67,6 @@ async function removeFromJourney(photoId) {
     if (firebaseInitialized) {
         try {
             await db.collection('journey_photos').doc(photoId).delete();
-            console.log('✓ Foto eliminada del recorrido en Firebase');
             return true;
         } catch (error) {
             console.error('Error eliminando de Firebase:', error);
@@ -188,7 +186,6 @@ async function savePhotoInfo(photoId, data) {
                 place: data.place || '',
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            console.log('✓ Metadatos guardados en Firebase');
             return true;
         } catch (error) {
             console.error('Error guardando metadatos en Firebase:', error);
@@ -246,7 +243,6 @@ async function deletePhotoInfo(photoId) {
     if (firebaseInitialized) {
         try {
             await db.collection('photo_metadata').doc(photoId).delete();
-            console.log('✓ Metadatos eliminados de Firebase');
             return true;
         } catch (error) {
             console.error('Error eliminando metadatos de Firebase:', error);

@@ -10,7 +10,7 @@
 </head>
 
 <body>
-    <!-- NAVEGACIÓN -->
+    <!-- NAVIGATION -->
     <nav>
         <ul>
             <li><a href="index.html" class="active">🏠 Home</a></li>
@@ -23,38 +23,72 @@
     <div class="container">
         <!-- PÁGINA: INICIO (DEDICATORIA) -->
         <section id="inicio" class="page-section active">
-            <div class="dedicatoria-card">
-                <h1>Para Mamá</h1>
-                <div class="subtitle">Un viaje por los recuerdos más preciados</div>
-                <div class="heart-decoration">❤️</div>
+            <div style="display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap; align-items: flex-start;">
+                <!-- Carta Personal (Español) -->
+                <div class="dedicatoria-card" style="flex: 1; min-width: 400px; max-width: 550px;">
+                    <h1>Para Mamá</h1>
+                    <div class="subtitle">Un viaje por los recuerdos más preciados</div>
+                    <div class="heart-decoration">❤️</div>
 
-                <div class="dedicatoria-text">
-                    <p>Querida mamá,</p>
-                    <br>
-                    <p>Este regalo es un homenaje a algunos momentos que has compartido con quienes más amas. Cada
-                        fotografía aquí guardada es un pedazo de historia, un instante de felicidad, un recuerdo que
-                        merece ser celebrado.</p>
-                    <br>
-                    <p>Estas imágenes cuentan historias de vidas llena de amor, risas y momentos inolvidables
-                        en familia. Este espacio es para que tú y tus hermanas podáis revivir
-                        juntas esos momentos, añadir recuerdos y mantener viva la memoria familiar.</p>
-                    <br>
-                    <p>Además, dejo un espacio extra para que puedas añadir nuevas imágenes y recuerdos a este tesoro familiar, si así lo quieres.
-                        <br><i><small>Esto todavía está en desarrollo, pero la idea es que podáis contribuir con vuestras propias fotos y momentos especiales.</small></i>
-                    </p>
-                    <br>
-                    <p>
-                        PD: Cualquier sugerencia o idea para mejorar este regalo será más que bienvenida. ¡Espero que lo disfrutes tanto como yo disfruté creándolo para ti!
-                    </p>
-                    <br>
-                    <p>
-                        Espero que este regalo te traiga tanta alegría como la que tú nos has dado a todos nosotros a lo largo de los años.
-                    </p>
-                    <br>
-                    <p>Con mucho amor,<br>Tu hijo</p>
+                    <div class="dedicatoria-text">
+                        <p>Querida mamá,</p>
+                        <br>
+                        <p>Este regalo es un homenaje a algunos momentos que has compartido con quienes más amas. Cada
+                            fotografía aquí guardada es un pedazo de historia, un instante de felicidad, un recuerdo que
+                            merece ser celebrado.</p>
+                        <br>
+                        <p>Estas imágenes cuentan historias de vidas llena de amor, risas y momentos inolvidables
+                            en familia. Este espacio es para que tú y tus hermanas (y hermano) podáis revivir
+                            juntas esos momentos, añadir recuerdos y mantener viva la memoria familiar.</p>
+                        <br>
+                        <p>Además, dejo un espacio extra para que puedas añadir nuevas imágenes y recuerdos a este tesoro
+                            familiar, si así lo quieres.
+                        </p>
+                        <br>
+                        <p>
+                            PD: Cualquier sugerencia o idea para mejorar este regalo será más que bienvenida. ¡Espero que lo
+                            disfrutes tanto como yo disfruté creándolo para ti!
+                        </p>
+                        <br>
+                        <p>
+                            Que este regalo te traiga tanta alegría como la que tú nos has dado a todos nosotros a lo
+                            largo de los años.
+                        </p>
+                        <br>
+                        <p>Con mucho amor,<br>Tu hijo</p>
+                    </div>
+
+                    <div class="heart-decoration">✨</div>
                 </div>
 
-                <div class="heart-decoration">✨</div>
+                <!-- Family Letter (English) -->
+                <div class="dedicatoria-card" style="flex: 1; min-width: 400px; max-width: 550px; background: linear-gradient(135deg, var(--dusty-blue) 0%, var(--sage-green) 100%); color: white;">
+                    <h2 style="color: white; font-size: 2rem;">To the Fokkelman Family</h2>
+                    <div class="subtitle" style="color: rgba(255,255,255,0.9);">A Shared Space for Our Memories</div>
+                    <div class="heart-decoration">👨‍👩‍👧‍👦</div>
+
+                    <div class="dedicatoria-text" style="color: rgba(255,255,255,0.95);">
+                        <p>Dear family,</p>
+                        <br>
+                        <p>Welcome to our family memory gallery! This is a special place where we can all come together to preserve and share the precious moments that have shaped our family story.</p>
+                        <br>
+                        <p><strong>How it works:</strong></p>
+                        <ul style="text-align: left; margin: 1rem 0; padding-left: 2rem;">
+                            <li><strong>Gallery:</strong> Browse through all family photos</li>
+                            <li><strong>Journey:</strong> Add your memories, stories, dates, and locations to photos</li>
+                            <li><strong>Album:</strong> View all saved memories and edit them anytime</li>
+                            <li><strong>Add Photos:</strong> Upload your own family photos to share with everyone</li>
+                        </ul>
+                        <br>
+                        <p>Everyone can contribute! Add your own photos, share your memories, and help us build this living archive of our family history.</p>
+                        <br>
+                        <p>Let's keep our memories alive, together.</p>
+                        <br>
+                        <p style="text-align: center;"><strong>With love,<br>Fokkelman Family</strong></p>
+                    </div>
+
+                    <div class="heart-decoration">🌟</div>
+                </div>
             </div>
         </section>
     </div>
@@ -62,7 +96,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    
+
     <!-- Scripts -->
     <script src="js/config.js"></script>
     <script src="js/firebase-config.js"></script>
@@ -70,7 +104,7 @@
     <script src="js/auth.js"></script>
     <script src="js/photo-manager.js"></script>
     <script src="js/lightbox.js"></script>
-    
+
     <script>
         async function actualizarContador() {
             const contador = document.getElementById('journeyCount');
@@ -79,7 +113,7 @@
                 contador.textContent = count;
             }
         }
-        
+
         function iniciar() {
             setTimeout(() => {
                 if (isAuthenticated()) {
@@ -89,7 +123,7 @@
                 }
             }, 100);
         }
-        
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', iniciar);
         } else {
