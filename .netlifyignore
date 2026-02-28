@@ -1,0 +1,29 @@
+# .netlifyignore
+# Este archivo le dice a Netlify qué NO subir en el deploy
+# A diferencia de .gitignore, aquí NO incluimos js/config.env.js
+# porque SÍ queremos que se suba a Netlify
+
+# Scripts Python de desarrollo
+*.py
+*.pyc
+__pycache__/
+
+# Documentación de desarrollo
+GUIA_*.md
+RESUMEN_*.md
+INICIO_*.md
+
+# Scripts de inicio local
+inicio.bat
+inicio.sh
+
+# Node modules
+node_modules/
+
+# Git
+.git/
+.gitignore
+
+# README y documentación de seguridad (opcional - comentar si quieres subirlos)
+# SECURITY.md
+# CONFIGURATION.md

@@ -12,7 +12,8 @@ __pycache__/
 env/
 venv/
 
-# Configuración con credenciales reales (NO SUBIR)
+# Configuración con credenciales reales (NO SUBIR A GITHUB)
+# Este archivo SÍ se sube a Netlify mediante "netlify deploy --prod"
 js/config.env.js
 
 # Logs y outputs
@@ -54,3 +55,6 @@ INICIO_*.md
 # Node modules (si decides usar npm en el futuro)
 node_modules/
 package-lock.json
+
+# Local Netlify folder
+.netlify

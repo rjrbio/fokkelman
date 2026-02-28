@@ -5,13 +5,6 @@
   publish = "."
   command = "echo 'Static site, no build needed'"
 
-# Redirecciones para SPA (Single Page Application)
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  force = false
-
 # Headers para cache óptimo
 [[headers]]
   for = "/*.html"
@@ -34,20 +27,6 @@
     Cache-Control = "public, max-age=3600"
     Content-Type = "application/json"
 
-# Optimizaciones
+# Optimizaciones (desactivadas para evitar problemas con módulos)
 [build.processing]
-  skip_processing = false
-
-[build.processing.css]
-  bundle = true
-  minify = true
-
-[build.processing.js]
-  bundle = true
-  minify = true
-
-[build.processing.html]
-  pretty_urls = true
-
-[build.processing.images]
-  compress = true
+  skip_processing = true
