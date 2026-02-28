@@ -45,6 +45,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     
     <!-- Scripts base -->
+    <script src="js/config.env.js"></script>
     <script src="js/config.js"></script>
     <script src="js/firebase-config.js"></script>
     <script src="js/storage.js"></script>
@@ -343,13 +344,14 @@
         
         // Función para subir imagen a Cloudinary
         async function subirACloudinary(file) {
-            const uploadPreset = 'fokkelman_unsigned';
+            const uploadPreset = typeof ENV_CONFIG !== 'undefined' ? ENV_CONFIG.CLOUDINARY_UPLOAD_PRESET : 'your_upload_preset';
+            const uploadFolder = typeof ENV_CONFIG !== 'undefined' ? ENV_CONFIG.CLOUDINARY_UPLOAD_FOLDER : 'family_photos';
             
             const formData = new FormData();
             formData.append('file', file);
             formData.append('upload_preset', uploadPreset);
-            formData.append('folder', 'family_custom'); // Carpeta en Cloudinary
-            formData.append('public_id', 'custom_fokkelman_' + Date.now()); // ID único
+            formData.append('folder', uploadFolder);
+            formData.append('public_id', 'custom_fokkelman_' + Date.now());
             
             const response = await fetch(
                 `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,

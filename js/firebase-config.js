@@ -2,17 +2,21 @@
 // CONFIGURACIÓN DE FIREBASE
 // ============================================
 
-// TODO: Reemplaza esta configuración con la tuya de Firebase Console
-// Para obtenerla, ve a: https://console.firebase.google.com/
-// → Configuración del proyecto → Tus apps → Configuración
-
-const firebaseConfig = {
-    apiKey: "AIzaSyBJIWsuBia2rEo0oXJj-7RysIwyCV6HfcQ",
-    authDomain: "galeria-fokkelman.firebaseapp.com",
-    projectId: "galeria-fokkelman",
-    storageBucket: "galeria-fokkelman.firebasestorage.app",
-    messagingSenderId: "421869881760",
-    appId: "1:421869881760:web:8080878291bd7c97d63cc5"
+// Configuración de Firebase (lee de config.env.js si está disponible)
+const firebaseConfig = typeof ENV_CONFIG !== 'undefined' ? {
+    apiKey: ENV_CONFIG.FIREBASE_API_KEY,
+    authDomain: ENV_CONFIG.FIREBASE_AUTH_DOMAIN,
+    projectId: ENV_CONFIG.FIREBASE_PROJECT_ID,
+    storageBucket: ENV_CONFIG.FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: ENV_CONFIG.FIREBASE_MESSAGING_SENDER_ID,
+    appId: ENV_CONFIG.FIREBASE_APP_ID
+} : {
+    apiKey: "YOUR_API_KEY_HERE",
+    authDomain: "your-project.firebaseapp.com",
+    projectId: "your-project-id",
+    storageBucket: "your-project.firebasestorage.app",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abc123def456"
 };
 
 // Inicializar Firebase
@@ -22,9 +26,9 @@ let firebaseInitialized = false;
 function initFirebase() {
     try {
         // Verificar que la configuración esté completa
-        if (firebaseConfig.apiKey === "TU_API_KEY_AQUI") {
-            console.warn('⚠️ Firebase no configurado - usando localStorage como fallback');
-            console.warn('⚠️ Lee FIREBASE.md para instrucciones');
+        if (firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
+            console.warn('⚠️ Firebase not configured - using localStorage as fallback');
+            console.warn('⚠️ Create js/config.env.js from .env.example template');
             return false;
         }
         

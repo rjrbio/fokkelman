@@ -2,7 +2,8 @@
 // CONFIGURACIÓN GLOBAL - FAMILIA FOKKELMAN
 // ============================================
 
-const CLOUD_NAME = 'dmreytypx';
+// Cloudinary Cloud Name (configurado en config.env.js)
+const CLOUD_NAME = typeof ENV_CONFIG !== 'undefined' ? ENV_CONFIG.CLOUDINARY_CLOUD_NAME : 'your-cloud-name';
 const CLOUDINARY_CLOUD_NAME = CLOUD_NAME; // Alias para compatibilidad
 
 // Array de fotos para el RECORRIDO (selección especial)

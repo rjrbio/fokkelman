@@ -1,60 +1,124 @@
 # Galería Familiar Fokkelman
 
-Galería de fotos familiar con gestión de recorridos personalizados y sincronización en la nube.
+A family photo gallery with personalized journeys, memory management, and cloud synchronization.
 
-## Características
+## ✨ Features
 
-- **Galería de fotos** con paginación de 50 fotos por página
-- **Sistema de autenticación** con contraseña
-- **Recorrido personalizado** para guardar fotos favoritas con descripciones
-- **Álbum de recuerdos** mostrando todas las fotos del recorrido
-- **Sincronización Firebase** entre dispositivos de todos los miembros de la familia
-- **Diseño clásico y elegante** optimizado para personas mayores
+- **Photo Gallery** with pagination (50 photos per page)
+- **Password authentication** system
+- **Custom Journey** to save favorite photos with descriptions, dates, and locations
+- **Memory Album** displaying all journey photos with saved memories
+- **Firebase sync** across all family member devices
+- **Upload custom photos** that everyone can see
+- **Classic and elegant design** optimized for elderly users
+- **Vintage color palette** (brown, cream, gold, sage green)
 
-## Tecnologías
+## 🚀 Technologies
 
-- **Frontend**: HTML5, CSS3, JavaScript vanilla
-- **Almacenamiento de imágenes**: Cloudinary (cloud: dmreytypx)
-- **Base de datos**: Firebase Firestore
-- **Hosting**: Netlify
+- **Frontend**: HTML5, CSS3, Vanilla JavaScript
+- **Image Storage**: Cloudinary
+- **Database**: Firebase Firestore
+- **Hosting**: Netlify-ready
 
-## Estructura del Proyecto
+## 📁 Project Structure
 
 ```
 fokkelman/
-├── index.html          # Página de inicio
-├── galeria.html        # Galería con paginación
-├── recorrido.html      # Navegación de fotos del recorrido
-├── album.html          # Vista en cuadrícula del álbum
+├── index.html          # Home page with family letters
+├── galeria.html        # Gallery with pagination
+├── recorrido.html      # Journey navigation
+├── album.html          # Album grid view with add photo feature
 ├── css/
-│   └── styles.css      # Estilos principales
+│   └── styles.css      # Main styles with vintage theme
 ├── js/
-│   ├── auth.js         # Sistema de autenticación
-│   ├── config.js       # Configuración Cloudinary
-│   ├── firebase-config.js  # Configuración Firebase
-│   ├── photo-manager.js    # Gestión de fotos y recorrido
-│   ├── photo-loader.js     # Carga de fotos desde JSON
-│   ├── storage.js      # Gestión localStorage
-│   └── lightbox.js     # Visor de imágenes
-├── fotos.json          # Índice de 3659 fotos
-└── netlify.toml        # Configuración de despliegue
-
+│   ├── config.env.js   # Environment configuration (NOT IN REPO - create from .env.example)
+│   ├── auth.js         # Authentication system
+│   ├── config.js       # Cloudinary configuration
+│   ├── firebase-config.js  # Firebase configuration
+│   ├── photo-manager.js    # Photo and journey management
+│   ├── photo-loader.js     # Photo loading from JSON
+│   ├── storage.js      # localStorage management
+│   └── lightbox.js     # Image viewer
+├── .env.example        # Example environment variables
+├── fotos.json          # Photo index (3659+ photos)
+└── netlify.toml        # Deployment configuration
 ```
 
-## Acceso
+## 🔒 Setup & Configuration
 
-**Contraseña**: `Fokkelman`
+**⚠️ Important**: This project requires configuration before running.
 
-## Instalación Local
+### Quick Start
 
-1. Clonar el repositorio
-2. Abrir `index.html` en un navegador
-3. Usar la contraseña para acceder
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/fokkelman-gallery.git
+   cd fokkelman-gallery
+   ```
 
-## Despliegue
+2. **Create configuration file**
+   ```bash
+   # Copy the example configuration
+   cp .env.example js/config.env.js
+   ```
 
-El proyecto está configurado para despliegue en Netlify. Simplemente conectar el repositorio y Netlify se encargará del resto.
+3. **Configure credentials**
+   - Edit `js/config.env.js` with your real values
+   - See [CONFIGURATION.md](CONFIGURATION.md) for detailed instructions
+
+4. **Open in browser**
+   ```bash
+   # Simply open index.html in your browser
+   open index.html
+   ```
+
+### Required Configuration
+
+You need to set up:
+- Family password for access
+- Firebase project (for data sync)
+- Cloudinary account (for image hosting)
+
+See [CONFIGURATION.md](CONFIGURATION.md) for step-by-step setup guide.
+
+## 🔐 Security
+
+This project contains sensitive configuration that must be protected:
+- Password authentication
+- Firebase API keys
+- Cloudinary credentials
+
+**The file `js/config.env.js` contains real credentials and is excluded from the repository.**
+
+See [SECURITY.md](SECURITY.md) for security best practices.
+
+## 📖 How It Works
+
+1. **Gallery**: Browse all family photos (paginated)
+2. **Journey**: Select photos to add to your personal journey
+3. **Journey Page**: Add memories, dates, and locations to each photo
+4. **Album**: View all saved memories - photos with information automatically appear here
+5. **Upload**: Family members can upload new photos to share with everyone
+
+## 🎨 Design
+
+- **Vintage color palette**: Warm browns, cream, sage green, dusty blue, soft gold
+- **Typography**: Georgia serif for classic feel
+- **Responsive**: Works on desktop, tablet, and mobile
+- **Accessibility**: Large buttons and text for elderly users
+
+## 🚀 Deployment
+
+The project is ready for deployment on:
+- Netlify (configuration included)
+- Vercel
+- GitHub Pages
+- Any static hosting
+
+## 📝 License
+
+Private family project - All rights reserved
 
 ---
 
-*Proyecto creado para la familia Fokkelman - Enero 2026*
+*Created with ❤️ for the Fokkelman Family - January 2026*

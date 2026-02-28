@@ -2,7 +2,8 @@
 // SISTEMA DE AUTENTICACIÓN
 // ============================================
 
-const CORRECT_PASSWORD = 'Fokkelman';
+// Contraseña de acceso (configurada en config.env.js)
+const CORRECT_PASSWORD = typeof ENV_CONFIG !== 'undefined' ? ENV_CONFIG.PASSWORD : 'CHANGE_ME';
 const AUTH_KEY = 'fokkelman_authenticated';
 
 /**

@@ -12,6 +12,9 @@ __pycache__/
 env/
 venv/
 
+# Configuración con credenciales reales (NO SUBIR)
+js/config.env.js
+
 # Logs y outputs
 output/
 *.log
