@@ -38,6 +38,15 @@ export const actions: Actions = {
 		});
 
 		const next = url.searchParams.get('next');
-		redirect(303, next && next.startsWith('/') && !next.startsWith('//') ? next : '/app');
+		let target = '/app';
+		if (next) {
+			try {
+				const resolved = new URL(next, url.origin);
+				if (resolved.origin === url.origin) target = resolved.pathname + resolved.search + resolved.hash;
+			} catch {
+				// malformed next, fall back to /app
+			}
+		}
+		redirect(303, target);
 	}
 };
