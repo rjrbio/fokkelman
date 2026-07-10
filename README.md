@@ -1,124 +1,37 @@
-# Galería Familiar Fokkelman
+# Fokkelman Photo Vault
 
-A family photo gallery with personalized journeys, memory management, and cloud synchronization.
+Almacén de fotos privado para la familia Fokkelman: más de 3.600 fotografías
+digitalizadas, con búsqueda, favoritos, descarga y subida — detrás de un login
+seguro. Incluye una [demo pública](https://github.com/rjrbio/fokkelman) con
+fotos de muestra para que cualquiera pueda probar la app real.
 
-## ✨ Features
+**Stack**: SvelteKit + TypeScript · Cloudinary (imágenes, metadatos y búsqueda,
+sin base de datos aparte) · Netlify (hosting y funciones de servidor).
 
-- **Photo Gallery** with pagination (50 photos per page)
-- **Password authentication** system
-- **Custom Journey** to save favorite photos with descriptions, dates, and locations
-- **Memory Album** displaying all journey photos with saved memories
-- **Firebase sync** across all family member devices
-- **Upload custom photos** that everyone can see
-- **Classic and elegant design** optimized for elderly users
-- **Vintage color palette** (brown, cream, gold, sage green)
+## Desarrollo
 
-## 🚀 Technologies
-
-- **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **Image Storage**: Cloudinary
-- **Database**: Firebase Firestore
-- **Hosting**: Netlify-ready
-
-## 📁 Project Structure
-
-```
-fokkelman/
-├── index.html          # Home page with family letters
-├── galeria.html        # Gallery with pagination
-├── recorrido.html      # Journey navigation
-├── album.html          # Album grid view with add photo feature
-├── css/
-│   └── styles.css      # Main styles with vintage theme
-├── js/
-│   ├── config.env.js   # Environment configuration (NOT IN REPO - create from .env.example)
-│   ├── auth.js         # Authentication system
-│   ├── config.js       # Cloudinary configuration
-│   ├── firebase-config.js  # Firebase configuration
-│   ├── photo-manager.js    # Photo and journey management
-│   ├── photo-loader.js     # Photo loading from JSON
-│   ├── storage.js      # localStorage management
-│   └── lightbox.js     # Image viewer
-├── .env.example        # Example environment variables
-├── fotos.json          # Photo index (3659+ photos)
-└── netlify.toml        # Deployment configuration
+```bash
+npm install
+cp .env.example .env   # rellenar credenciales (ver DEPLOYMENT.md)
+npm run dev
 ```
 
-## 🔒 Setup & Configuration
+## Tests
 
-**⚠️ Important**: This project requires configuration before running.
+```bash
+npm run test:unit   # Vitest
+npm run test:e2e    # Playwright (levanta un mock de Cloudinary, no usa red)
+```
 
-### Quick Start
+## Arquitectura en corto
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/fokkelman-gallery.git
-   cd fokkelman-gallery
-   ```
+- El navegador nunca ve el API secret: búsqueda, favoritos (tag `favorite`)
+  y firmas de subida pasan por endpoints de servidor de SvelteKit.
+- El índice de fotos se consulta a la Search API de Cloudinary y se cachea
+  5 minutos, con fallback a la copia caducada si la API falla.
+- Login: contraseña familiar hasheada con scrypt en una variable de entorno;
+  sesión en cookie HttpOnly firmada con HMAC (30 días).
+- Zona pública: landing (`/`) y demo interactiva (`/demo`, carpeta `demo`
+  de Cloudinary, favoritos solo en localStorage del visitante).
 
-2. **Create configuration file**
-   ```bash
-   # Copy the example configuration
-   cp .env.example js/config.env.js
-   ```
-
-3. **Configure credentials**
-   - Edit `js/config.env.js` with your real values
-   - See [CONFIGURATION.md](CONFIGURATION.md) for detailed instructions
-
-4. **Open in browser**
-   ```bash
-   # Simply open index.html in your browser
-   open index.html
-   ```
-
-### Required Configuration
-
-You need to set up:
-- Family password for access
-- Firebase project (for data sync)
-- Cloudinary account (for image hosting)
-
-See [CONFIGURATION.md](CONFIGURATION.md) for step-by-step setup guide.
-
-## 🔐 Security
-
-This project contains sensitive configuration that must be protected:
-- Password authentication
-- Firebase API keys
-- Cloudinary credentials
-
-**The file `js/config.env.js` contains real credentials and is excluded from the repository.**
-
-See [SECURITY.md](SECURITY.md) for security best practices.
-
-## 📖 How It Works
-
-1. **Gallery**: Browse all family photos (paginated)
-2. **Journey**: Select photos to add to your personal journey
-3. **Journey Page**: Add memories, dates, and locations to each photo
-4. **Album**: View all saved memories - photos with information automatically appear here
-5. **Upload**: Family members can upload new photos to share with everyone
-
-## 🎨 Design
-
-- **Vintage color palette**: Warm browns, cream, sage green, dusty blue, soft gold
-- **Typography**: Georgia serif for classic feel
-- **Responsive**: Works on desktop, tablet, and mobile
-- **Accessibility**: Large buttons and text for elderly users
-
-## 🚀 Deployment
-
-The project is ready for deployment on:
-- Netlify (configuration included)
-- Vercel
-- GitHub Pages
-- Any static hosting
-
-## 📝 License
-
-Private family project - All rights reserved
-
----
-
-*Created with ❤️ for the Fokkelman Family - January 2026*
+Ver `DEPLOYMENT.md` para deploy y operaciones.
