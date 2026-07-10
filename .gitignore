@@ -1,61 +1,26 @@
-# Scripts Python de desarrollo (no necesarios en producción)
-*.py
-*.pyc
-__pycache__/
-*.pyo
-*.pyd
-.Python
+node_modules
 
-# Archivos de configuración local
-.env
-.venv
-env/
-venv/
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
 
-# Configuración con credenciales reales (NO SUBIR A GITHUB)
-# Este archivo SÍ se sube a Netlify mediante "netlify deploy --prod"
-js/config.env.js
-
-# Logs y outputs
-output/
-*.log
-
-# Archivos temporales
-*.tmp
-*.bak
-*~
-
-# Sistema operativo
+# OS
 .DS_Store
 Thumbs.db
-desktop.ini
 
-# Configuración local de Python
-pip-log.txt
-pip-delete-this-directory.txt
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
 
-# Editores
-.vscode/
-.idea/
-*.swp
-*.swo
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
 
-# Scripts de inicio local (no necesarios en Netlify)
-inicio.bat
-inicio.sh
-
-# Documentación de desarrollo (opcional)
-GUIA_*.md
-RESUMEN_*.md
-INICIO_*.md
-
-# Archivos de ejemplo
-*.example
-
-# Node modules (si decides usar npm en el futuro)
-node_modules/
-package-lock.json
-
-# Local Netlify folder
-.netlify
-.worktrees/
+# Testing
+test-results/
