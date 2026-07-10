@@ -31,6 +31,9 @@
 1. Merge de `rewrite/photo-vault` a `main` → Netlify publica la app nueva
    en la URL de siempre.
 2. Verificar en producción: `/` (landing), `/demo`, login y galería.
+3. Actualizar el enlace "demo pública" del README (hoy apunta al repo de
+   GitHub como placeholder) para que apunte a la URL real de `/demo` en
+   producción.
 
 ## Desmantelamiento (después del cutover) — [MANUAL]
 
