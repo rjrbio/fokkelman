@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
+import { resolveSafeNext } from '$lib/server/guard';
 import {
 	createSessionToken,
 	SESSION_COOKIE,
@@ -38,15 +39,6 @@ export const actions: Actions = {
 		});
 
 		const next = url.searchParams.get('next');
-		let target = '/app';
-		if (next) {
-			try {
-				const resolved = new URL(next, url.origin);
-				if (resolved.origin === url.origin) target = resolved.pathname + resolved.search + resolved.hash;
-			} catch {
-				// malformed next, fall back to /app
-			}
-		}
-		redirect(303, target);
+		redirect(303, resolveSafeNext(next, url.origin));
 	}
 };
