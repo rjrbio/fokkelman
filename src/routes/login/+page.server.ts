@@ -38,6 +38,6 @@ export const actions: Actions = {
 		});
 
 		const next = url.searchParams.get('next');
-		redirect(303, next && next.startsWith('/') ? next : '/app');
+		redirect(303, next && next.startsWith('/') && !next.startsWith('//') ? next : '/app');
 	}
 };
