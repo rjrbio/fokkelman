@@ -25,3 +25,17 @@ const demoCache = createIndexCache(() =>
 export const getFamilyIndex = () => familyCache.get();
 export const getDemoIndex = () => demoCache.get();
 export const invalidateFamilyIndex = () => familyCache.invalidate();
+
+/**
+ * Decides which Cloudinary folder an upload signature should be issued for.
+ *
+ * This is the only server-side control preventing a client from signing an
+ * upload into an arbitrary Cloudinary folder (e.g. the public `demo` folder,
+ * which must never receive family uploads): a requested folder is honored
+ * only if it is the default upload folder or a folder that already appears
+ * in the family index; anything else silently falls back to the default.
+ */
+export function resolveUploadFolder(requested: string, existingFolders: string[]): string {
+	const allowed = new Set([UPLOAD_FOLDER, ...existingFolders.filter(Boolean)]);
+	return allowed.has(requested) ? requested : UPLOAD_FOLDER;
+}
