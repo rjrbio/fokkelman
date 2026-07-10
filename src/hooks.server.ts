@@ -9,7 +9,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	if (!event.locals.authed && isPrivatePath(event.url.pathname)) {
 		if (event.url.pathname.startsWith('/api/')) error(401, 'Unauthorized');
-		redirect(303, `/login?next=${encodeURIComponent(event.url.pathname)}`);
+		redirect(303, `/login?next=${encodeURIComponent(event.url.pathname + event.url.search)}`);
 	}
 	return resolve(event);
 };
