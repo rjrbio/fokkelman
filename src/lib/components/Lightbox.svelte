@@ -49,7 +49,7 @@
 
 <svelte:window {onkeydown} />
 
-<div class="overlay" role="dialog" aria-modal="true" aria-label="Photo viewer" {onpointerdown} {onpointerup}>
+<div class="overlay" role="dialog" aria-modal="true" aria-label="Photo viewer" tabindex="-1" {onpointerdown} {onpointerup}>
 	<div class="stage">
 		{#if !fullLoaded}
 			<img class="placeholder" src={thumbUrl(cloudName, photo)} alt="" aria-hidden="true" />
