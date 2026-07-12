@@ -4,3 +4,8 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  # CLOUDINARY_CLOUD_NAME no es un secreto (va embebido en las URLs
+  # públicas de imágenes) pero el escáner de secretos de Netlify lo
+  # marca como falso positivo si su valor aparece en algún archivo
+  # del repo. Ver https://ntl.fyi/configure-secrets-scanning
+  SECRETS_SCAN_OMIT_KEYS = "CLOUDINARY_CLOUD_NAME"

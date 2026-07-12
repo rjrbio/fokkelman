@@ -24,3 +24,7 @@ vite.config.ts.timestamp-*
 
 # Testing
 test-results/
+
+# Internal docs, not for the public repo
+/DEPLOYMENT.md
+/docs
