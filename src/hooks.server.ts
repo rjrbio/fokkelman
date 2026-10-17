@@ -1,13 +1,17 @@
 import { error, redirect, type Handle } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { getAuthConfigProblem, readAuthSettings } from '$lib/server/authConfig';
-import { isPrivatePath } from '$lib/server/guard';
+import { decodePathname, isPrivatePath } from '$lib/server/guard';
 import { securityHeaders } from '$lib/server/securityHeaders';
 import { SESSION_COOKIE, verifySessionToken } from '$lib/server/session';
 
 let loggedProblem: string | null = null;
 
 export const handle: Handle = async ({ event, resolve }) => {
+	// Match on the path SvelteKit will route (decoded), never on the raw one: `/%61pp` is `/app`.
+	const pathname = decodePathname(event.url.pathname);
+	if (pathname === null) error(400, 'Malformed URI');
+
 	const settings = readAuthSettings(env);
 	const problem = getAuthConfigProblem(settings);
 	if (problem && problem !== loggedProblem) {
@@ -19,12 +23,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.authed =
 		!problem && verifySessionToken(event.cookies.get(SESSION_COOKIE), settings.sessionSecret);
 
-	if (!event.locals.authed && isPrivatePath(event.url.pathname)) {
-		if (event.url.pathname.startsWith('/api/')) error(401, 'Unauthorized');
-		redirect(303, `/login?next=${encodeURIComponent(event.url.pathname + event.url.search)}`);
+	if (!event.locals.authed && isPrivatePath(pathname)) {
+		if (pathname.startsWith('/api/')) error(401, 'Unauthorized');
+		redirect(303, `/login?next=${encodeURIComponent(pathname + event.url.search)}`);
 	}
 	const response = await resolve(event);
-	for (const [name, value] of Object.entries(securityHeaders(event.url.pathname))) {
+	for (const [name, value] of Object.entries(securityHeaders(pathname))) {
 		response.headers.set(name, value);
 	}
 	return response;

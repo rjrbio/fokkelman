@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPrivatePath, resolveSafeNext } from './guard';
+import { decodePathname, isPrivatePath, resolveSafeNext } from './guard';
 
 describe('isPrivatePath', () => {
 	it('protects the app and the api', () => {
@@ -13,6 +13,32 @@ describe('isPrivatePath', () => {
 		expect(isPrivatePath('/demo')).toBe(false);
 		expect(isPrivatePath('/login')).toBe(false);
 		expect(isPrivatePath('/apple')).toBe(false);
+	});
+});
+
+describe('decodePathname', () => {
+	it('decodes unreserved percent-escapes the way SvelteKit does before routing', () => {
+		expect(decodePathname('/%61pp')).toBe('/app');
+		expect(decodePathname('/%61pi/favorite')).toBe('/api/favorite');
+		expect(decodePathname('/%61pp/photo/x')).toBe('/app/photo/x');
+	});
+
+	it('leaves an escaped percent sign alone, so a double-encoded path does not decode twice', () => {
+		expect(decodePathname('/%2561pp')).toBe('/%2561pp');
+	});
+
+	it('leaves reserved escapes such as %2F alone, like decodeURI', () => {
+		expect(decodePathname('/app%2Fphoto')).toBe('/app%2Fphoto');
+	});
+
+	it('returns plain paths unchanged', () => {
+		for (const path of ['/', '/app', '/app/photo/family_uploads/x', '/login']) {
+			expect(decodePathname(path)).toBe(path);
+		}
+	});
+
+	it('returns null for a malformed escape sequence', () => {
+		expect(decodePathname('/%E0%A4%A')).toBeNull();
 	});
 });
 

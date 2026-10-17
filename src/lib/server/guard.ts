@@ -1,3 +1,24 @@
+import { error } from '@sveltejs/kit';
+
+/**
+ * The pathname SvelteKit routes on: `decodeURI` applied between the `%25`
+ * separators, exactly as `respond.js` does. Matching the guard against the raw
+ * `url.pathname` would let `/%61pp` reach the `/app` route unchecked.
+ * Returns `null` for a malformed escape sequence.
+ */
+export function decodePathname(pathname: string): string | null {
+	try {
+		return pathname.split('%25').map(decodeURI).join('%25');
+	} catch {
+		return null;
+	}
+}
+
+/** Defense in depth for API handlers: refuse before reading the body or touching Cloudinary. */
+export function requireAuthed(locals: App.Locals): void {
+	if (!locals.authed) error(401, 'Unauthorized');
+}
+
 export function isPrivatePath(pathname: string): boolean {
 	return pathname === '/app' || pathname.startsWith('/app/') || pathname.startsWith('/api/');
 }

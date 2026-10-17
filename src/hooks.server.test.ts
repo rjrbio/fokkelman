@@ -101,3 +101,38 @@ describe('handle: security headers', () => {
 		expect(response.headers.get('Cache-Control')).toBe('private, no-store');
 	});
 });
+
+describe('handle: percent-encoded paths cannot dodge the guard', () => {
+	it('redirects an anonymous visitor from /%61pp, which SvelteKit routes as /app', async () => {
+		await expect(run('/%61pp').result).rejects.toMatchObject({
+			status: 303,
+			location: '/login?next=%2Fapp'
+		});
+	});
+
+	it('redirects an anonymous visitor from a nested encoded private page, keeping the query', async () => {
+		await expect(run('/%61pp/photo/x?fav=1').result).rejects.toMatchObject({
+			status: 303,
+			location: '/login?next=%2Fapp%2Fphoto%2Fx%3Ffav%3D1'
+		});
+	});
+
+	it('answers 401 to an anonymous call to an encoded API path', async () => {
+		await expect(run('/%61pi/favorite').result).rejects.toMatchObject({ status: 401 });
+	});
+
+	it('answers 400 to a malformed path, like SvelteKit does', async () => {
+		await expect(run('/%E0%A4%A').result).rejects.toMatchObject({ status: 400 });
+	});
+
+	it('marks an encoded private page non-indexable and non-cacheable', async () => {
+		const response = await run('/%61pp', createSessionToken(SECRET)).result;
+		expect(response.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+		expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+	});
+
+	it('marks an encoded sign-in path non-indexable too', async () => {
+		const response = await run('/%6Cogin').result;
+		expect(response.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+	});
+});

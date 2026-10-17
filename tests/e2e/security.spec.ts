@@ -24,3 +24,16 @@ test('the gallery and the viewer run without Content-Security-Policy violations'
 	await expect(page.getByRole('dialog', { name: 'Photo viewer' })).toBeVisible();
 	expect(violations).toEqual([]);
 });
+
+test.describe('without a session', () => {
+	test('a percent-encoded /app is redirected to the login, not served', async ({ request }) => {
+		const response = await request.get('/%61pp', { maxRedirects: 0 });
+		expect(response.status()).toBe(303);
+		expect(response.headers()['location']).toContain('/login');
+	});
+
+	test('a percent-encoded /api path is refused', async ({ request }) => {
+		const response = await request.post('/%61pi/upload-signature', { data: { folder: '' } });
+		expect(response.status()).toBe(401);
+	});
+});
