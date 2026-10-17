@@ -1,8 +1,12 @@
 import adapter from '@sveltejs/adapter-netlify';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
-// `vite dev` needs websockets for HMR; production does not.
-const dev = process.env.NODE_ENV !== 'production';
+// `vite dev` needs websockets for HMR; production does not. Fail closed: only an explicit
+// `development` gets the relaxation, any other value (production, staging, unset) is strict.
+const dev = process.env.NODE_ENV === 'development';
+
+/** @type {Array<'ws:'>} */
+const devConnectSrc = dev ? ['ws:'] : [];
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -17,7 +21,7 @@ const config = {
 				'style-src': ['self', 'unsafe-inline'],
 				'img-src': ['self', 'data:', 'https://res.cloudinary.com'],
 				'font-src': ['self'],
-				'connect-src': ['self', 'https://api.cloudinary.com', ...(dev ? ['ws:', 'http:'] : [])],
+				'connect-src': ['self', 'https://api.cloudinary.com', ...devConnectSrc],
 				'object-src': ['none'],
 				'base-uri': ['self'],
 				'form-action': ['self'],
