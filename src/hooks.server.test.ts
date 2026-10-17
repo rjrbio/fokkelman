@@ -86,3 +86,18 @@ describe('handle: fails closed on a broken configuration', () => {
 		expect(event.locals.authed).toBe(true);
 	});
 });
+
+describe('handle: security headers', () => {
+	it('adds the baseline headers to public pages', async () => {
+		const response = await run('/demo').result;
+		expect(response.headers.get('X-Frame-Options')).toBe('DENY');
+		expect(response.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
+		expect(response.headers.get('X-Robots-Tag')).toBeNull();
+	});
+
+	it('marks private pages non-indexable and non-cacheable', async () => {
+		const response = await run('/app', createSessionToken(SECRET)).result;
+		expect(response.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+		expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+	});
+});

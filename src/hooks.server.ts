@@ -2,6 +2,7 @@ import { error, redirect, type Handle } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { getAuthConfigProblem, readAuthSettings } from '$lib/server/authConfig';
 import { isPrivatePath } from '$lib/server/guard';
+import { securityHeaders } from '$lib/server/securityHeaders';
 import { SESSION_COOKIE, verifySessionToken } from '$lib/server/session';
 
 let loggedProblem: string | null = null;
@@ -22,5 +23,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (event.url.pathname.startsWith('/api/')) error(401, 'Unauthorized');
 		redirect(303, `/login?next=${encodeURIComponent(event.url.pathname + event.url.search)}`);
 	}
-	return resolve(event);
+	const response = await resolve(event);
+	for (const [name, value] of Object.entries(securityHeaders(event.url.pathname))) {
+		response.headers.set(name, value);
+	}
+	return response;
 };
