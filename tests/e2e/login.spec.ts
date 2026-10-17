@@ -20,3 +20,14 @@ test('redirects an anonymous visitor from /app to /login', async ({ page }) => {
 	await page.goto('/app');
 	await page.waitForURL('**/login?next=%2Fapp');
 });
+
+test('the password can be revealed and hidden', async ({ page }) => {
+	await page.goto('/login');
+	await page.waitForLoadState('networkidle'); // wait for hydration before clicking
+	const input = page.getByPlaceholder('Family password');
+	await expect(input).toHaveAttribute('type', 'password');
+	await page.getByRole('button', { name: 'Show password' }).click();
+	await expect(input).toHaveAttribute('type', 'text');
+	await page.getByRole('button', { name: 'Hide password' }).click();
+	await expect(input).toHaveAttribute('type', 'password');
+});

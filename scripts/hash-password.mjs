@@ -1,6 +1,6 @@
 import { randomBytes, scryptSync } from 'node:crypto';
 
-const password = process.argv[2];
+const password = process.argv[2]?.trim();
 if (!password) {
 	console.error('Usage: node scripts/hash-password.mjs <password>');
 	process.exit(1);
