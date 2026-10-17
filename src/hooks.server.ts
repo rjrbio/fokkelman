@@ -1,11 +1,22 @@
 import { error, redirect, type Handle } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
+import { getAuthConfigProblem, readAuthSettings } from '$lib/server/authConfig';
 import { isPrivatePath } from '$lib/server/guard';
 import { SESSION_COOKIE, verifySessionToken } from '$lib/server/session';
 
+let loggedProblem: string | null = null;
+
 export const handle: Handle = async ({ event, resolve }) => {
-	const token = event.cookies.get(SESSION_COOKIE);
-	event.locals.authed = verifySessionToken(token, env.SESSION_SECRET ?? '');
+	const settings = readAuthSettings(env);
+	const problem = getAuthConfigProblem(settings);
+	if (problem && problem !== loggedProblem) {
+		loggedProblem = problem;
+		console.error(`[auth] sign-in disabled: ${problem}`);
+	}
+
+	// Fail closed: with a broken configuration no session is ever valid.
+	event.locals.authed =
+		!problem && verifySessionToken(event.cookies.get(SESSION_COOKIE), settings.sessionSecret);
 
 	if (!event.locals.authed && isPrivatePath(event.url.pathname)) {
 		if (event.url.pathname.startsWith('/api/')) error(401, 'Unauthorized');

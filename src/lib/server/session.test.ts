@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
 	createSessionToken,
@@ -37,6 +38,16 @@ describe('session tokens', () => {
 		expect(verifySessionToken(undefined, SECRET)).toBe(false);
 		expect(verifySessionToken('garbage', SECRET)).toBe(false);
 		expect(verifySessionToken('123.', SECRET)).toBe(false);
+	});
+
+	it('refuses to create a token with an empty secret', () => {
+		expect(() => createSessionToken('')).toThrow();
+	});
+
+	it('rejects a token forged with an empty secret (an empty HMAC key is public knowledge)', () => {
+		const exp = Math.floor(Date.now() / 1000) + 3600;
+		const forged = `${exp}.${createHmac('sha256', '').update(String(exp)).digest('hex')}`;
+		expect(verifySessionToken(forged, '')).toBe(false);
 	});
 });
 

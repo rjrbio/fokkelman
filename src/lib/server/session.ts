@@ -8,6 +8,7 @@ function sign(payload: string, secret: string): string {
 }
 
 export function createSessionToken(secret: string, now: number = Date.now()): string {
+	if (!secret) throw new Error('A session secret is required to create a session token');
 	const exp = Math.floor(now / 1000) + SESSION_TTL_S;
 	return `${exp}.${sign(String(exp), secret)}`;
 }
@@ -17,7 +18,7 @@ export function verifySessionToken(
 	secret: string,
 	now: number = Date.now()
 ): boolean {
-	if (!token) return false;
+	if (!token || !secret) return false;
 	const [expStr, sig] = token.split('.');
 	if (!expStr || !sig) return false;
 	const expected = Buffer.from(sign(expStr, secret));
