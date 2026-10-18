@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { fileKey, splitSelection } from '$lib/uploadFiles';
+
 	interface UploadItem {
 		file: File;
 		status: 'pending' | 'uploading' | 'done' | 'error';
@@ -9,14 +11,19 @@
 
 	let items = $state<UploadItem[]>([]);
 	let busy = $state(false);
+	let notice = $state('');
 
 	const doneCount = $derived(items.filter((i) => i.status === 'done').length);
 
 	function addFiles(files: FileList | null) {
 		if (!files) return;
-		for (const file of files) {
-			if (file.type.startsWith('image/')) items.push({ file, status: 'pending', progress: 0 });
-		}
+		const { accepted, duplicates, rejected } = splitSelection(
+			[...files],
+			new Set(items.map((item) => fileKey(item.file)))
+		);
+		for (const file of accepted) items.push({ file, status: 'pending', progress: 0 });
+		const skipped = duplicates.length + rejected.length;
+		notice = skipped > 0 ? `${skipped} file${skipped === 1 ? '' : 's'} skipped (duplicate or not an image).` : '';
 	}
 
 	async function uploadOne(item: UploadItem) {
@@ -93,13 +100,17 @@
 				type="file"
 				accept="image/*"
 				multiple
-				onchange={(e) => addFiles(e.currentTarget.files)}
+				onchange={(e) => {
+					addFiles(e.currentTarget.files);
+					e.currentTarget.value = '';
+				}}
 			/>
 		</label>
+		{#if notice}<p class="hint" role="status">{notice}</p>{/if}
 
 		{#if items.length > 0}
 			<ul>
-				{#each items as item (item.file.name + item.file.size)}
+				{#each items as item (fileKey(item.file))}
 					<li>
 						<span class="name">{item.file.name}</span>
 						{#if item.status === 'uploading'}

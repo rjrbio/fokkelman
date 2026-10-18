@@ -26,3 +26,25 @@ test('uploads a photo with a server-issued signature', async ({ page }) => {
 	await page.getByRole('button', { name: 'Close', exact: true }).click();
 	await refresh;
 });
+
+test('ignores a file that is already in the queue instead of crashing', async ({ page }) => {
+	await stubCdnImages(page);
+	const errors: string[] = [];
+	page.on('pageerror', (error) => errors.push(error.message));
+	await login(page);
+	await page.waitForLoadState('networkidle'); // hydration
+
+	await page.getByRole('button', { name: 'Upload' }).click();
+	const photo = {
+		name: 'holiday.jpg',
+		mimeType: 'image/jpeg',
+		buffer: Buffer.from('fake-image-bytes')
+	};
+	await page.setInputFiles('input[type=file]', photo);
+	await page.setInputFiles('input[type=file]', photo);
+
+	const dialog = page.getByRole('dialog', { name: 'Upload photos' });
+	await expect(dialog.getByRole('listitem')).toHaveCount(1);
+	await expect(dialog.getByText('1 file skipped')).toBeVisible();
+	expect(errors).toEqual([]);
+});
