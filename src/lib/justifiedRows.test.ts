@@ -83,11 +83,12 @@ describe('layoutRows', () => {
 
 	it('picks the arrangement whose rows are closer to the target height', () => {
 		// 4 landscapes at 200px high take 4·266.7 + 3·4 = 1078.7px: too wide for 1000px.
-		// Keeping all 4 gives a 184.9px row; stopping at 3 gives a 244.9px one. 4 is closer.
+		// Keeping all 4 gives a 185.25px row; stopping at 3 gives a 248px one. 4 is closer to 200.
 		const four = layoutRows(Array.from({ length: 5 }, (_, i) => landscape(`p${i}`)), options);
 		expect(four[0].items).toHaveLength(4);
 
-		// Make the 4th item very wide: keeping it would shrink the row to ~91px, stopping at 3 gives ~245px.
+		// Make the 4th item very wide: keeping it would shrink the row to ~141px (|141-200| = 59),
+		// stopping at 3 gives 248px (|248-200| = 48). Stopping is closer to the target.
 		const items = [landscape('a'), landscape('b'), landscape('c'), photo(30, 10, 'strip'), landscape('d')];
 		const rows = layoutRows(items, options);
 		expect(rows[0].items.map((p) => p.item.id)).toEqual(['a', 'b', 'c']);
@@ -105,8 +106,27 @@ describe('layoutRows', () => {
 	});
 
 	it('never lets a panorama collapse its row below a readable height', () => {
-		const rows = layoutRows([landscape('a'), photo(20000, 100, 'pano'), landscape('b')], options);
-		for (const row of rows.slice(0, -1)) expect(row.height).toBeGreaterThan(60);
+		// 200:1 on the file, laid out as MAX_ASPECT (3:1). Enough neighbours that the panorama
+		// lands in a full row (a, b, pano at ~175px) and not in the last, unstretched one.
+		const items = [
+			landscape('a'),
+			landscape('b'),
+			photo(20000, 100, 'pano'),
+			...['c', 'd', 'e', 'f', 'g'].map(landscape)
+		];
+		const rows = layoutRows(items, options);
+		expect(rows.length).toBeGreaterThan(1);
+
+		const panoRow = rows.findIndex((row) => row.items.some((p) => p.item.id === 'pano'));
+		expect(panoRow).toBeGreaterThanOrEqual(0);
+		expect(panoRow).toBeLessThan(rows.length - 1);
+
+		const pano = rows[panoRow].items.find((p) => p.item.id === 'pano')!;
+		expect(pano.width / rows[panoRow].height).toBeCloseTo(MAX_ASPECT, 9);
+
+		for (const row of rows.slice(0, -1)) {
+			expect(row.height).toBeGreaterThan(options.targetHeight * 0.5);
+		}
 	});
 
 	it('copes with photos that have no dimensions', () => {
