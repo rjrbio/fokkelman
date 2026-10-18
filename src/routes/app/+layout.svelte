@@ -4,12 +4,20 @@
 	import PhotoGrid from '$lib/components/PhotoGrid.svelte';
 	import TopBar from '$lib/components/TopBar.svelte';
 	import UploadModal from '$lib/components/UploadModal.svelte';
+	import { clearFavoriteOverrides, withFavoriteOverrides } from '$lib/favorites.svelte';
 	import { filterPhotos, filtersFromSearchParams, uniqueFolders } from '$lib/filterPhotos';
 
 	let { data, children } = $props();
 
+	const photos = $derived(withFavoriteOverrides(data.photos));
 	const filters = $derived(filtersFromSearchParams(page.url.searchParams));
-	const filtered = $derived(filterPhotos(data.photos, filters));
+	const filtered = $derived(filterPhotos(photos, filters));
+
+	// Fresh server data supersedes whatever was pending locally.
+	$effect(() => {
+		void data.fetchedAt;
+		clearFavoriteOverrides();
+	});
 
 	let showUpload = $state(false);
 
@@ -22,7 +30,7 @@
 <svelte:head><title>Fokkelman Photo Vault</title></svelte:head>
 
 <TopBar
-	folders={uniqueFolders(data.photos)}
+	folders={uniqueFolders(photos)}
 	{filters}
 	total={filtered.length}
 	stale={data.stale}
@@ -32,7 +40,8 @@
 <PhotoGrid
 	photos={filtered}
 	cloudName={data.cloudName}
-	onOpen={(publicId) => goto(`/app/photo/${publicId}${page.url.search}`)}
+	resetKey={page.url.search}
+	onOpen={(publicId) => goto(`/app/photo/${publicId}${page.url.search}`, { noScroll: true })}
 />
 
 {#if showUpload}

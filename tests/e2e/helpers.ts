@@ -17,3 +17,10 @@ export async function login(page: Page): Promise<void> {
 	await page.getByRole('button', { name: 'Sign in' }).click();
 	await page.waitForURL('**/app');
 }
+
+/** Resets the Cloudinary mock and the app's cached index. Call after `login` (the API needs a session). */
+export async function resetBackend(page: Page): Promise<void> {
+	const response = await fetch('http://127.0.0.1:9966/__reset', { method: 'POST' });
+	if (!response.ok) throw new Error(`mock reset failed: ${response.status}`);
+	await page.request.post('/api/refresh-index');
+}

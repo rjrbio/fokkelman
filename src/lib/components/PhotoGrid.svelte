@@ -5,10 +5,13 @@
 	let {
 		photos,
 		cloudName,
+		resetKey = '',
 		onOpen
 	}: {
 		photos: Photo[];
 		cloudName: string;
+		/** The visible batch goes back to the first page only when this key changes (i.e. the filters), not on every data refresh. */
+		resetKey?: string;
 		onOpen: (publicId: string) => void;
 	} = $props();
 
@@ -16,9 +19,13 @@
 	let visibleCount = $state(BATCH);
 	let sentinel = $state<HTMLElement>();
 
-	// Al cambiar la lista (filtros), volver al primer lote
+	// Un $derived compara por valor: una prop que se reevalúa (p. ej. `page.url.search` en cada
+	// navegación) pero devuelve la misma cadena no reinicia el lote visible.
+	const key = $derived(resetKey);
+
+	// Al cambiar los filtros, volver al primer lote
 	$effect(() => {
-		void photos;
+		void key;
 		visibleCount = BATCH;
 	});
 
@@ -43,7 +50,7 @@
 	<div class="grid" data-testid="photo-grid">
 		{#each photos.slice(0, visibleCount) as photo (photo.publicId)}
 			<button class="cell" onclick={() => onOpen(photo.publicId)} aria-label="Open {photo.publicId}">
-				<img src={thumbUrl(cloudName, photo)} alt={photo.publicId} loading="lazy" />
+				<img src={thumbUrl(cloudName, photo)} alt="" loading="lazy" />
 				{#if photo.favorite}<span class="star" aria-hidden="true">★</span>{/if}
 			</button>
 		{/each}
