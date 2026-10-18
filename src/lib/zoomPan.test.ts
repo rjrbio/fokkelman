@@ -80,6 +80,16 @@ describe('zoomAt', () => {
 		expect(zoomAt(zoomed, 1, { x: 300, y: 200 }, fitted, viewport)).toEqual(IDENTITY);
 	});
 
+	it('keeps the point under the cursor in place when the photo is already zoomed and moved', () => {
+		// ratio = 4 / 2 = 2; x = 200 - 2·(200 - 100) = 0, y = 100 - 2·(100 - (-50)) = -200.
+		// At 4x the pan limits are 1300 and 900, so none of this is swallowed by the clamp.
+		expect(zoomAt({ scale: 2, x: 100, y: -50 }, 4, { x: 200, y: 100 }, fitted, viewport)).toEqual({
+			scale: 4,
+			x: 0,
+			y: -200
+		});
+	});
+
 	it('cannot zoom past the maximum or out past the fit', () => {
 		expect(zoomAt(IDENTITY, 100, { x: 0, y: 0 }, fitted, viewport).scale).toBe(MAX_SCALE);
 		expect(zoomAt(IDENTITY, 0.1, { x: 0, y: 0 }, fitted, viewport).scale).toBe(1);
@@ -107,10 +117,26 @@ describe('pinchView', () => {
 	});
 
 	it('follows the midpoint of the fingers', () => {
-		const view = pinchView(start, 200, { x: 100, y: 0 }, fitted, viewport);
-		// The photo point that was under the first midpoint (0,0) must end up under the new one (100,0).
+		const view = pinchView(start, 200, { x: 100, y: -40 }, fitted, viewport);
+		// The photo point that was under the first midpoint (0,0) must end up under the new one (100,-40).
 		expect(view.scale).toBe(2);
 		expect(view.x).toBeCloseTo(100);
+		expect(view.y).toBeCloseTo(-40);
+	});
+
+	it('keeps the photo point under the fingers when the pinch starts from a zoomed, moved photo', () => {
+		const zoomedStart = {
+			view: { scale: 2, x: -100, y: 30 },
+			distance: 100,
+			mid: { x: 50, y: -20 }
+		};
+		const view = pinchView(zoomedStart, 150, { x: 80, y: 40 }, fitted, viewport);
+		// scale = 2 · 150/100 = 3, ratio = 1.5.
+		// x = 80 - 1.5·(50 - (-100)) = -145, y = 40 - 1.5·(-20 - 30) = 115.
+		// At 3x the pan limits are 850 and 600, so none of this is swallowed by the clamp.
+		expect(view.scale).toBeCloseTo(3);
+		expect(view.x).toBeCloseTo(-145);
+		expect(view.y).toBeCloseTo(115);
 	});
 
 	it('survives a degenerate start', () => {
@@ -154,6 +180,26 @@ describe('createTapDetector', () => {
 		expect(taps.register(1400, at(), true)).toBe('single');
 		taps.register(5000, at(0, 0), true);
 		expect(taps.register(5100, at(300, 300), true)).toBe('single');
+	});
+
+	it('pairs taps exactly at the time limit but not a millisecond beyond it', () => {
+		const onTime = createTapDetector();
+		onTime.register(1000, at(), true);
+		expect(onTime.register(1300, at(), true)).toBe('double'); // 300 ms: still a double
+
+		const late = createTapDetector();
+		late.register(1000, at(), true);
+		expect(late.register(1301, at(), true)).toBe('single'); // 301 ms: too slow
+	});
+
+	it('pairs taps exactly at the distance limit but not a pixel beyond it', () => {
+		const near = createTapDetector();
+		near.register(1000, at(100, 100), true);
+		expect(near.register(1100, at(124, 100), true)).toBe('double'); // 24 px: still a double
+
+		const far = createTapDetector();
+		far.register(1000, at(100, 100), true);
+		expect(far.register(1100, at(125, 100), true)).toBe('single'); // 25 px: too far
 	});
 
 	it('a double tap is consumed: the next tap starts over', () => {
