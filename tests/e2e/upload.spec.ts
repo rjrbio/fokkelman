@@ -59,6 +59,9 @@ test('reaches the file field with the keyboard, announces what it skipped and cl
 	await page.getByRole('button', { name: 'Subir', exact: true }).click();
 	const dialog = page.getByRole('dialog', { name: 'Subir fotos' });
 	await expect(dialog).toBeFocused();
+	// The live region has to be in the accessibility tree before its text changes, or the
+	// announcement can be lost: getByRole skips elements that are display: none.
+	await expect(dialog.getByRole('status')).toHaveCount(1);
 
 	await page.keyboard.press('Tab');
 	await expect(dialog.locator('input[type=file]')).toBeFocused();
@@ -74,4 +77,25 @@ test('reaches the file field with the keyboard, announces what it skipped and cl
 
 	await page.keyboard.press('Escape');
 	await expect(dialog).toHaveCount(0);
+});
+
+test('offers a retry button big enough to tap when an upload fails', async ({ page }) => {
+	await stubCdnImages(page);
+	await page.route('https://api.cloudinary.com/v1_1/testcloud/image/upload', (route) =>
+		route.fulfill({ status: 500, contentType: 'application/json', body: '{}' })
+	);
+	await login(page);
+	await page.waitForLoadState('networkidle'); // hydration
+
+	await page.getByRole('button', { name: 'Subir', exact: true }).click();
+	await page.setInputFiles('input[type=file]', {
+		name: 'holiday.jpg',
+		mimeType: 'image/jpeg',
+		buffer: Buffer.from('fake-image-bytes')
+	});
+	await page.getByRole('button', { name: 'Subir todo' }).click();
+	await expect(page.getByText('Falló')).toBeVisible();
+
+	const box = await page.getByRole('button', { name: 'Reintentar' }).boundingBox();
+	expect(box?.height).toBeGreaterThanOrEqual(44);
 });

@@ -177,8 +177,9 @@
 		margin: 0;
 		color: var(--dim);
 	}
+	/* Out of the grid flow (no stray gap) but still in the accessibility tree, unlike display: none. */
 	.hint:empty {
-		display: none;
+		position: absolute;
 	}
 	.dropzone {
 		padding: 2rem 1rem;
@@ -235,7 +236,6 @@
 		color: var(--fg);
 	}
 	.small {
-		min-height: 36px;
 		padding: 0 0.75rem;
 	}
 	.footer .primary {
