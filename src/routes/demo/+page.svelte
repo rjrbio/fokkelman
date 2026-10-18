@@ -104,6 +104,9 @@
 		background: var(--bar);
 	}
 	.brand {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
 		margin-right: 0.5rem;
 		color: var(--fg);
 		font-weight: 700;

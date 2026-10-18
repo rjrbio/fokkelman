@@ -48,3 +48,10 @@ test('each area declares its own language', async ({ page }) => {
 	await page.goto('/');
 	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 });
+
+test('the brand link is big enough to tap', async ({ page }) => {
+	await page.goto('/demo');
+	await page.waitForLoadState('networkidle');
+	const box = await page.getByRole('link', { name: 'Fokkelman', exact: true }).boundingBox();
+	expect(box?.height).toBeGreaterThanOrEqual(44);
+});
