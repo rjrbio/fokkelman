@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { login, stubCdnImages, viewerDialog } from './helpers';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { login, starButton, stubCdnImages, viewerDialog } from './helpers';
 
 const zoomable = (page: Page) => page.getByTestId('zoomable');
 const scale = async (page: Page) => Number(await zoomable(page).getAttribute('data-scale'));
@@ -10,9 +10,12 @@ async function openFirstPhoto(page: Page) {
 	await expect(zoomable(page)).toHaveAttribute('data-scale', '1.00');
 }
 
+/** Moves the mouse to the middle of the photo and says where that is. */
 async function pointAtCentre(page: Page) {
 	const box = (await zoomable(page).boundingBox())!;
-	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+	await page.mouse.move(centre.x, centre.y);
+	return centre;
 }
 
 test.beforeEach(async ({ page }) => {
@@ -56,21 +59,24 @@ test.describe('zoom', () => {
 		page
 	}) => {
 		await openFirstPhoto(page);
-		await pointAtCentre(page);
+		const fitted = await pointAtCentre(page);
 		await page.mouse.down();
-		await page.mouse.move(400, 300, { steps: 4 });
+		await page.mouse.move(fitted.x - 80, fitted.y + 20, { steps: 4 });
 		await page.mouse.up();
 		await expect(zoomable(page)).toHaveAttribute('data-x', '0');
-		await expect(page).toHaveURL(/\/app\/photo\/Sample_001$/); // a mouse drag is not a swipe
 
 		await page.keyboard.press('+');
 		await page.keyboard.press('+');
 		await page.keyboard.press('+');
-		await pointAtCentre(page);
+		const zoomed = await pointAtCentre(page);
 		await page.mouse.down();
-		await page.mouse.move(500, 360, { steps: 4 });
+		await page.mouse.move(zoomed.x - 80, zoomed.y + 20, { steps: 4 });
 		await page.mouse.up();
 		expect(Number(await zoomable(page).getAttribute('data-x'))).not.toBe(0);
+
+		// Last, so that a swipe, which only changes the URL once the next photo has loaded, has had time to.
+		await expect(page).toHaveURL(/\/app\/photo\/Sample_001$/); // a mouse drag is not a swipe
+		await expect(viewerDialog(page).getByText('Foto 1 de 80')).toBeVisible();
 	});
 
 	test('going to another photo starts it fitted', async ({ page }) => {
@@ -153,5 +159,41 @@ test.describe('full screen', () => {
 		await page.keyboard.type('f0+');
 		await expect(viewer(page)).toHaveAttribute('data-immersive', 'false');
 		await expect(zoomable(page)).toHaveAttribute('data-scale', '1.00');
+	});
+});
+
+test.describe('on a phone', () => {
+	test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+	test('the tap that leaves full screen does not press what appears under the finger', async ({
+		page
+	}) => {
+		await page.getByRole('button', { name: 'Abrir Sample_001' }).tap();
+		await expect(viewerDialog(page)).toBeVisible();
+		await expect(zoomable(page)).toHaveAttribute('data-scale', '1.00');
+
+		const centreOf = async (button: Locator) => {
+			const box = (await button.boundingBox())!;
+			return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+		};
+		const close = viewerDialog(page).getByRole('button', { name: 'Cerrar visor' });
+		const star = starButton(page);
+		const closeAt = await centreOf(close);
+		const starAt = await centreOf(star);
+
+		// Full screen takes the panel away, and the tap that brings it back lands on the spot where
+		// its buttons are about to be: the click that follows the tap must not reach them.
+		for (const at of [closeAt, starAt]) {
+			await page.keyboard.press('f');
+			await expect(viewerDialog(page)).toHaveAttribute('data-immersive', 'true');
+			await page.waitForTimeout(400);
+
+			await page.touchscreen.tap(at.x, at.y);
+			await expect(viewerDialog(page)).toHaveAttribute('data-immersive', 'false');
+			await page.waitForTimeout(400); // a stray click would have arrived by now
+			await expect(viewerDialog(page)).toBeVisible();
+			await expect(page).toHaveURL(/\/app\/photo\/Sample_001$/);
+			await expect(star).toHaveAttribute('aria-pressed', 'false');
+		}
 	});
 });

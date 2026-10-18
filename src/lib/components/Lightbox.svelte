@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { fullUrl, thumbUrl, zoomUrl } from '$lib/cdn';
-	import { focusTrap, isTypingTarget } from '$lib/dom';
+	import { focusTrap, isTypingTarget, swallowNextClick } from '$lib/dom';
 	import { getMessages } from '$lib/i18n';
 	import type { Photo } from '$lib/types';
 	import Icon from './Icon.svelte';
@@ -105,7 +105,10 @@
 
 	/** In full screen a tap brings the panel back. */
 	function onTap() {
-		if (immersive) void leaveImmersive();
+		if (!immersive) return;
+		// The panel appears under the finger, and the click that follows the tap would press it.
+		swallowNextClick();
+		void leaveImmersive();
 	}
 </script>
 

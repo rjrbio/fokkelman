@@ -65,3 +65,26 @@ export function watchLoad(image: HTMLImageElement, onLoaded: () => void): () => 
 	image.addEventListener('load', onLoaded);
 	return () => image.removeEventListener('load', onLoaded);
 }
+
+/**
+ * After a tap that makes the thing under the finger disappear or change, the browser still fires the
+ * tap's click, at whatever is under the finger by then (a button of the panel that has just come
+ * back, say). Call this from the tap's handler to throw that one click away. It gives up after `ms`
+ * if no click comes (a tap that did not become one).
+ */
+export function swallowNextClick(ms = 400): void {
+	const timer = setTimeout(stop, ms);
+
+	function stop() {
+		clearTimeout(timer);
+		window.removeEventListener('click', swallow, true);
+	}
+
+	function swallow(event: MouseEvent) {
+		event.stopPropagation();
+		event.preventDefault();
+		stop();
+	}
+
+	window.addEventListener('click', swallow, true);
+}

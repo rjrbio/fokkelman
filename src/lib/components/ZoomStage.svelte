@@ -46,7 +46,6 @@
 	/** A finger that moves less than this between touching and lifting made a tap, not a drag. */
 	const TAP_SLOP = 10;
 	const SWIPE_MIN = 50;
-	const KEY_ZOOM_STEP = 1.25;
 
 	let stage = $state<HTMLElement>();
 	let viewport = $state({ width: 0, height: 0 });
@@ -71,7 +70,7 @@
 	$effect(() => (largeImage ? watchLoad(largeImage, () => (largeLoaded = true)) : undefined));
 
 	// A new photo starts fitted and unloaded. Not on the first run: a server-rendered photo may
-	// have loaded already, and `whenLoaded` has said so.
+	// have loaded already, and `watchLoad` has said so.
 	let currentKey = untrack(() => photoKey);
 	$effect(() => {
 		if (photoKey === currentKey) return;
