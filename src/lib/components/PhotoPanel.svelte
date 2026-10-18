@@ -10,7 +10,8 @@
 		favorite,
 		position,
 		onClose,
-		onToggleFavorite
+		onToggleFavorite,
+		onToggleFullscreen
 	}: {
 		photo: Photo;
 		cloudName: string;
@@ -18,6 +19,7 @@
 		position?: { index: number; total: number };
 		onClose: () => void;
 		onToggleFavorite: () => void;
+		onToggleFullscreen: () => void;
 	} = $props();
 
 	const m = getMessages().viewer;
@@ -41,6 +43,10 @@
 			<Icon name="download" />
 			{m.download}
 		</a>
+		<button class="action" data-action="fullscreen" onclick={onToggleFullscreen}>
+			<Icon name="expand" />
+			{m.enterFullscreen}
+		</button>
 	</div>
 
 	<dl>
