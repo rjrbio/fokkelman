@@ -22,6 +22,23 @@ test('says so in plain Spanish when the photo library cannot be loaded', async (
 	await expect(page.getByRole('link', { name: 'Reintentar' })).toHaveAttribute('href', '/app');
 });
 
+test('retries the demo itself, in English, when the demo cannot be loaded', async ({ page }) => {
+	await page.goto('/');
+	await page.waitForLoadState('networkidle'); // hydration
+	// Following the link navigates to /demo on the client, which asks the server for its data.
+	await page.route('**/demo/__data.json*', (route) =>
+		route.fulfill({
+			status: 500,
+			contentType: 'application/json',
+			body: JSON.stringify({ message: 'Internal Error' })
+		})
+	);
+	await page.getByRole('link', { name: 'Try the demo' }).click();
+
+	await expect(page.getByRole('heading', { name: 'Something went wrong' })).toBeVisible();
+	await expect(page.getByRole('link', { name: 'Try again' })).toHaveAttribute('href', '/demo');
+});
+
 test('an unknown page inside the family area is a Spanish 404', async ({ page }) => {
 	await login(page);
 	const response = await page.goto('/app/nada-por-aqui');

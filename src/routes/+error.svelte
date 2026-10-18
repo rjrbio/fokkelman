@@ -5,7 +5,9 @@
 
 	const m = $derived((langForPath(page.url.pathname) === 'es' ? es : en).error);
 	const notFound = $derived(page.status === 404);
-	const home = $derived(page.url.pathname.startsWith('/app') ? '/app' : '/');
+	// A 404 goes to the start of the area it happened in; any other failure retries the page that failed.
+	const home = $derived(langForPath(page.url.pathname) === 'es' ? '/app' : '/');
+	const retry = $derived(page.url.pathname + page.url.search);
 </script>
 
 <svelte:head><title>{notFound ? m.notFoundTitle : m.title}</title></svelte:head>
@@ -14,7 +16,7 @@
 	<h1>{notFound ? m.notFoundTitle : m.title}</h1>
 	<p>{notFound ? m.notFoundBody : m.body}</p>
 	<!-- A full reload: an error in the family layout needs the load to run again. -->
-	<a href={home} data-sveltekit-reload>{notFound ? m.home : m.retry}</a>
+	<a href={notFound ? home : retry} data-sveltekit-reload>{notFound ? m.home : m.retry}</a>
 </main>
 
 <style>
