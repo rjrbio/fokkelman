@@ -6,7 +6,7 @@ const appEnv = {
 	CLOUDINARY_API_KEY: 'test-key',
 	CLOUDINARY_API_SECRET: 'test-secret',
 	CLOUDINARY_API_BASE: 'http://127.0.0.1:9966',
-	SESSION_SECRET: 'e2e-session-secret',
+	SESSION_SECRET: 'e2e-session-secret-0123456789-abcdef',
 	FAMILY_PASSWORD_HASH: hashPassword('test-password')
 };
 

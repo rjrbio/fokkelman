@@ -3,7 +3,7 @@
   publish = "build"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
   # CLOUDINARY_CLOUD_NAME no es un secreto (va embebido en las URLs
   # públicas de imágenes) pero el escáner de secretos de Netlify lo
   # marca como falso positivo si su valor aparece en algún archivo

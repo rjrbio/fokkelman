@@ -1,7 +1,25 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { login, stubCdnImages } from './helpers';
 
 test.beforeEach(async ({ page }) => stubCdnImages(page));
+
+/**
+ * Answers the sign-in form action with a canned failure. The form has no explicit action, so
+ * `use:enhance` POSTs (fetch) to `/login` itself; the body is the devalue-encoded envelope
+ * SvelteKit sends: a JSON string holding the form data. Page loads of `/login` pass through.
+ */
+async function stubLoginFailure(page: Page, status: number, devalueData: string): Promise<void> {
+	await page.route(
+		(url) => url.pathname === '/login',
+		(route) =>
+			route.request().method() === 'POST'
+				? route.fulfill({
+						contentType: 'application/json',
+						body: JSON.stringify({ type: 'failure', status, data: devalueData })
+					})
+				: route.continue()
+	);
+}
 
 test('rejects a wrong password with a generic error', async ({ page }) => {
 	await page.goto('/login');
@@ -19,4 +37,40 @@ test('signs in with the family password and lands on the gallery', async ({ page
 test('redirects an anonymous visitor from /app to /login', async ({ page }) => {
 	await page.goto('/app');
 	await page.waitForURL('**/login?next=%2Fapp');
+});
+
+test('the password can be revealed and hidden', async ({ page }) => {
+	await page.goto('/login');
+	await page.waitForLoadState('networkidle'); // wait for hydration before clicking
+	const input = page.getByPlaceholder('Family password');
+	await expect(input).toHaveAttribute('type', 'password');
+	await page.getByRole('button', { name: 'Show password' }).click();
+	await expect(input).toHaveAttribute('type', 'text');
+	await page.getByRole('button', { name: 'Hide password' }).click();
+	await expect(input).toHaveAttribute('type', 'password');
+});
+
+test('says sign-in is unavailable, and disables the button, when the server is not configured', async ({
+	page
+}) => {
+	await stubLoginFailure(page, 503, '[{"misconfigured":1},true]');
+	await page.goto('/login');
+	await page.waitForLoadState('networkidle'); // wait for hydration before submitting
+	await page.getByPlaceholder('Family password').fill('any-password');
+	await page.getByRole('button', { name: 'Sign in' }).click();
+	await expect(page.getByRole('alert')).toHaveText(
+		'Sign-in is unavailable: the server is not configured yet.'
+	);
+	await expect(page.getByRole('button', { name: 'Sign in' })).toBeDisabled();
+});
+
+test('tells a locked-out visitor how long to wait', async ({ page }) => {
+	await stubLoginFailure(page, 429, '[{"locked":1,"retryAfterMin":2},true,2]');
+	await page.goto('/login');
+	await page.waitForLoadState('networkidle'); // wait for hydration before submitting
+	await page.getByPlaceholder('Family password').fill('any-password');
+	await page.getByRole('button', { name: 'Sign in' }).click();
+	await expect(page.getByRole('alert')).toHaveText('Too many attempts. Try again in 2 min.');
+	await expect(page.getByRole('alert')).toHaveCount(1);
+	await expect(page.getByRole('button', { name: 'Sign in' })).toBeEnabled();
 });

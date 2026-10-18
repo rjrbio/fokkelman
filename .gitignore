@@ -28,3 +28,6 @@ test-results/
 # Internal docs, not for the public repo
 /DEPLOYMENT.md
 /docs
+
+# Leftovers of the old static site (held credentials in clear text)
+/js/
