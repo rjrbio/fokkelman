@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
-import { searchAllPhotos, type CloudinaryConfig } from './cloudinary';
-import { createIndexCache } from './photoIndex';
+import { searchAllPhotos, setFavorite, type CloudinaryConfig } from './cloudinary';
+import { createIndexCache, withFavorite } from './photoIndex';
 
 export const DEMO_FOLDER = 'demo';
 export const UPLOAD_FOLDER = 'family_uploads';
@@ -25,6 +25,21 @@ const demoCache = createIndexCache(() =>
 export const getFamilyIndex = () => familyCache.get();
 export const getDemoIndex = () => demoCache.get();
 export const invalidateFamilyIndex = () => familyCache.invalidate();
+
+/**
+ * Sets the favorite tag on a family photo and patches the cached index so no refetch
+ * is needed. Refuses photos outside the family index (the public demo folder in particular).
+ */
+export async function markFavorite(
+	publicId: string,
+	favorite: boolean
+): Promise<'ok' | 'unknown-photo'> {
+	const { photos } = await getFamilyIndex();
+	if (!photos.some((p) => p.publicId === publicId)) return 'unknown-photo';
+	await setFavorite(cloudinaryConfig(), publicId, favorite);
+	familyCache.patch((all) => withFavorite(all, publicId, favorite));
+	return 'ok';
+}
 
 /**
  * Decides which Cloudinary folder an upload signature should be issued for.
