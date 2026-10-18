@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { focusTrap } from '$lib/dom';
+	import { es } from '$lib/messages';
 	import { fileKey, splitSelection } from '$lib/uploadFiles';
 
 	interface UploadItem {
@@ -8,6 +10,8 @@
 	}
 
 	let { folder, onClose }: { folder: string; onClose: (uploadedCount: number) => void } = $props();
+
+	const m = es.upload;
 
 	let items = $state<UploadItem[]>([]);
 	let busy = $state(false);
@@ -23,7 +27,7 @@
 		);
 		for (const file of accepted) items.push({ file, status: 'pending', progress: 0 });
 		const skipped = duplicates.length + rejected.length;
-		notice = skipped > 0 ? `${skipped} file${skipped === 1 ? '' : 's'} skipped (duplicate or not an image).` : '';
+		notice = skipped > 0 ? m.skipped(skipped) : '';
 	}
 
 	async function uploadOne(item: UploadItem) {
@@ -80,12 +84,18 @@
 		if (doneCount > 0) await fetch('/api/refresh-index', { method: 'POST' });
 		onClose(doneCount);
 	}
+
+	function onkeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape' && !busy) void close();
+	}
 </script>
 
-<div class="backdrop" role="dialog" aria-modal="true" aria-label="Upload photos">
-	<div class="modal">
-		<h2>Upload photos</h2>
-		<p class="hint">Destination: <strong>{folder || 'family_uploads'}</strong></p>
+<svelte:window {onkeydown} />
+
+<div class="backdrop" role="presentation">
+	<div class="modal" role="dialog" aria-modal="true" aria-label={m.title} tabindex="-1" use:focusTrap>
+		<h2>{m.title}</h2>
+		<p class="hint">{m.destination} <strong>{folder || 'family_uploads'}</strong></p>
 
 		<label
 			class="dropzone"
@@ -95,8 +105,9 @@
 				addFiles(e.dataTransfer?.files ?? null);
 			}}
 		>
-			Drag photos here or click to choose
+			{m.dropzone}
 			<input
+				class="sr-only"
 				type="file"
 				accept="image/*"
 				multiple
@@ -106,7 +117,8 @@
 				}}
 			/>
 		</label>
-		{#if notice}<p class="hint" role="status">{notice}</p>{/if}
+		<!-- Always in the page, so that screen readers announce it when its text changes. -->
+		<p class="hint" role="status">{notice}</p>
 
 		{#if items.length > 0}
 			<ul>
@@ -114,26 +126,26 @@
 					<li>
 						<span class="name">{item.file.name}</span>
 						{#if item.status === 'uploading'}
-							<progress max="100" value={item.progress}></progress>
+							<progress max="100" value={item.progress} aria-label={item.file.name}></progress>
 						{:else if item.status === 'done'}
-							<span class="ok">Done</span>
+							<span class="ok">{m.done}</span>
 						{:else if item.status === 'error'}
-							<span class="ko">Failed</span>
-							<button onclick={() => uploadOne(item)}>Retry</button>
+							<span class="ko">{m.failed}</span>
+							<button class="small" onclick={() => uploadOne(item)}>{m.retry}</button>
 						{:else}
-							<span class="dim">Waiting</span>
+							<span class="dim">{m.waiting}</span>
 						{/if}
 					</li>
 				{/each}
 			</ul>
 		{/if}
 
-		<footer>
+		<div class="footer">
 			<button class="primary" onclick={uploadAll} disabled={busy || items.length === 0}>
-				{busy ? 'Uploading…' : 'Upload all'}
+				{busy ? m.uploading : m.uploadAll}
 			</button>
-			<button onclick={close} disabled={busy}>Close</button>
-		</footer>
+			<button onclick={close} disabled={busy}>{m.close}</button>
+		</div>
 	</div>
 </div>
 
@@ -142,44 +154,51 @@
 		position: fixed;
 		inset: 0;
 		z-index: 200;
-		background: rgb(0 0 0 / 0.5);
 		display: grid;
 		place-items: center;
+		padding: 1rem;
+		background: rgb(0 0 0 / 0.65);
 	}
 	.modal {
-		background: var(--bg);
-		border-radius: var(--radius);
-		padding: 1.5rem;
-		width: min(92vw, 480px);
-		max-height: 85vh;
-		overflow: auto;
 		display: grid;
 		gap: 1rem;
+		width: min(100%, 480px);
+		max-height: 100%;
+		padding: 1.5rem;
+		overflow: auto;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--bar);
 	}
 	h2 {
 		margin: 0;
 	}
 	.hint {
 		margin: 0;
-		color: var(--text-dim);
+		color: var(--dim);
 	}
-	.dropzone {
-		border: 2px dashed var(--text-dim);
-		border-radius: var(--radius);
-		padding: 2rem;
-		text-align: center;
-		color: var(--text-dim);
-		cursor: pointer;
-	}
-	.dropzone input {
+	.hint:empty {
 		display: none;
 	}
+	.dropzone {
+		padding: 2rem 1rem;
+		border: 2px dashed var(--dim);
+		border-radius: var(--radius);
+		color: var(--dim);
+		text-align: center;
+		cursor: pointer;
+	}
+	.dropzone:focus-within {
+		border-color: var(--accent);
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
 	ul {
-		list-style: none;
-		margin: 0;
-		padding: 0;
 		display: grid;
 		gap: 0.5rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
 	}
 	li {
 		display: flex;
@@ -193,28 +212,40 @@
 		white-space: nowrap;
 	}
 	.ok {
-		color: #188038;
+		color: var(--accent);
 	}
 	.ko {
 		color: var(--danger);
 	}
 	.dim {
-		color: var(--text-dim);
+		color: var(--dim);
 	}
-	footer {
+	.footer {
 		display: flex;
 		gap: 0.5rem;
 		justify-content: flex-end;
 	}
-	footer button {
-		padding: 0.6rem 1.2rem;
+	.footer button,
+	.small {
+		min-height: 44px;
+		padding: 0 1.25rem;
+		border: 1px solid var(--line);
 		border-radius: var(--radius);
-		border: 1px solid var(--surface);
-		background: var(--bg);
+		background: var(--chip);
+		color: var(--fg);
 	}
-	footer .primary {
+	.small {
+		min-height: 36px;
+		padding: 0 0.75rem;
+	}
+	.footer .primary {
+		border-color: transparent;
 		background: var(--accent);
-		border-color: var(--accent);
-		color: white;
+		color: var(--on-accent);
+		font-weight: 600;
+	}
+	.footer button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 </style>
