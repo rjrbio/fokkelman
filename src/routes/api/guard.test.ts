@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
 	createUploadSignature: vi.fn(),
 	cloudinaryConfig: vi.fn(),
 	getFamilyIndex: vi.fn(),
+	markFavorite: vi.fn(),
 	invalidateFamilyIndex: vi.fn(),
 	resolveUploadFolder: vi.fn()
 }));
@@ -15,6 +16,7 @@ vi.mock('$lib/server/cloudinary', () => ({
 vi.mock('$lib/server/photos', () => ({
 	cloudinaryConfig: mocks.cloudinaryConfig,
 	getFamilyIndex: mocks.getFamilyIndex,
+	markFavorite: mocks.markFavorite,
 	invalidateFamilyIndex: mocks.invalidateFamilyIndex,
 	resolveUploadFolder: mocks.resolveUploadFolder
 }));
@@ -34,6 +36,7 @@ function makeEvent(authed: boolean) {
 beforeEach(() => {
 	for (const mock of Object.values(mocks)) mock.mockReset();
 	mocks.getFamilyIndex.mockResolvedValue({ photos: [] });
+	mocks.markFavorite.mockResolvedValue('ok');
 	mocks.resolveUploadFolder.mockReturnValue('family_uploads');
 });
 

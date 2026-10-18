@@ -63,7 +63,11 @@ npm run test:e2e    # Playwright (levanta un mock de Cloudinary, no usa red)
 - El navegador nunca ve el API secret: búsqueda, favoritos (tag `favorite`)
   y firmas de subida pasan por endpoints de servidor de SvelteKit.
 - El índice de fotos se consulta a la Search API de Cloudinary y se cachea
-  5 minutos en memoria; si la API falla, se sirve la copia caducada.
+  5 minutos en memoria, por instancia serverless (cada instancia tiene su
+  propia copia); si la API falla, se sirve la copia caducada. Marcar una
+  favorita parchea la copia en caché en lugar de volver a consultar el índice
+  (solo la de la instancia que atendió la escritura), y solo se aceptan fotos
+  que estén en el índice familiar.
 - Login: contraseña familiar hasheada con scrypt en una variable de entorno,
   límite de intentos por IP de cliente y sesión en cookie HttpOnly firmada con
   HMAC (30 días). El límite de intentos vive en memoria, por instancia

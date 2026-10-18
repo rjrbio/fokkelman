@@ -3,6 +3,8 @@ import type { Photo, PhotoIndex } from '$lib/types';
 export interface IndexCache {
 	get(): Promise<PhotoIndex>;
 	invalidate(): void;
+	/** Applies an update to the cached copy without refetching; a no-op when nothing is cached. */
+	patch(mutate: (photos: Photo[]) => Photo[]): void;
 }
 
 export function createIndexCache(
@@ -29,6 +31,13 @@ export function createIndexCache(
 		},
 		invalidate() {
 			cached = null;
+		},
+		patch(mutate) {
+			if (cached) cached = { ...cached, photos: mutate(cached.photos) };
 		}
 	};
+}
+
+export function withFavorite(photos: Photo[], publicId: string, favorite: boolean): Photo[] {
+	return photos.map((p) => (p.publicId === publicId ? { ...p, favorite } : p));
 }

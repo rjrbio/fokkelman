@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
-import { setFavorite } from '$lib/server/cloudinary';
 import { requireAuthed } from '$lib/server/guard';
-import { cloudinaryConfig, invalidateFamilyIndex } from '$lib/server/photos';
+import { markFavorite } from '$lib/server/photos';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -15,7 +14,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return json({ message: 'publicId (string) and favorite (boolean) are required' }, { status: 400 });
 	}
 
-	await setFavorite(cloudinaryConfig(), body.publicId, body.favorite);
-	invalidateFamilyIndex();
+	if ((await markFavorite(body.publicId, body.favorite)) === 'unknown-photo') {
+		return json({ message: 'Unknown photo' }, { status: 404 });
+	}
 	return new Response(null, { status: 204 });
 };

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import type { GalleryFilters } from '$lib/filterPhotos';
+	import { filtersToSearch, type GalleryFilters } from '$lib/filterPhotos';
 
 	let {
 		folders,
@@ -16,14 +16,26 @@
 		onUpload?: () => void;
 	} = $props();
 
-	function apply(patch: Partial<GalleryFilters>) {
-		const next = { ...filters, ...patch };
-		const params = new URLSearchParams();
-		if (next.folder) params.set('folder', next.folder);
-		if (next.query) params.set('q', next.query);
-		if (next.favoritesOnly) params.set('fav', '1');
-		const qs = params.toString();
-		goto(`/app${qs ? `?${qs}` : ''}`, { keepFocus: true, noScroll: false });
+	const SEARCH_DEBOUNCE_MS = 250;
+	let searchTimer: ReturnType<typeof setTimeout> | undefined;
+	let pendingQuery: string | undefined;
+
+	$effect(() => () => clearTimeout(searchTimer));
+
+	function apply(patch: Partial<GalleryFilters>, { replace = false } = {}) {
+		clearTimeout(searchTimer);
+		const query = pendingQuery ?? filters.query; // flush what was typed but not applied yet
+		pendingQuery = undefined;
+		goto(`/app${filtersToSearch({ ...filters, query, ...patch })}`, {
+			keepFocus: true,
+			replaceState: replace
+		});
+	}
+
+	function onSearchInput(value: string) {
+		pendingQuery = value;
+		clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => apply({}, { replace: true }), SEARCH_DEBOUNCE_MS);
 	}
 </script>
 
@@ -46,7 +58,7 @@
 		placeholder="Search by file name…"
 		aria-label="Search photos"
 		value={filters.query}
-		oninput={(e) => apply({ query: e.currentTarget.value })}
+		oninput={(e) => onSearchInput(e.currentTarget.value)}
 	/>
 
 	<button

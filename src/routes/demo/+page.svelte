@@ -35,7 +35,12 @@
 	<span class="count">{filtered.length} photos</span>
 </header>
 
-<PhotoGrid photos={filtered} cloudName={data.cloudName} onOpen={(publicId) => (openId = publicId)} />
+<PhotoGrid
+	photos={filtered}
+	cloudName={data.cloudName}
+	resetKey={`${query}|${favoritesOnly}`}
+	onOpen={(publicId) => (openId = publicId)}
+/>
 
 {#if openPhoto}
 	<Lightbox
