@@ -85,5 +85,43 @@ test('an expired session while the viewer is open sends the user back to sign in
 	await context.clearCookies();
 	await page.getByRole('button', { name: 'Add to favorites' }).click();
 
-	await page.waitForURL(/\/login\?next=/);
+	await page.waitForURL(/\/login\?next=%2Fapp%2Fphoto%2FSample_003/);
+});
+
+test('un-starring from the favorites view keeps the viewer open on that photo', async ({
+	page
+}) => {
+	await openGallery(page);
+	await page.getByRole('button', { name: 'Open Sample_004' }).click();
+	await page.getByRole('button', { name: 'Add to favorites' }).click();
+	await expect(page.getByRole('button', { name: 'Remove from favorites' })).toBeVisible();
+	await page.getByRole('button', { name: 'Close viewer' }).click();
+
+	await page.getByRole('button', { name: '★ Favorites' }).click();
+	await page.getByRole('button', { name: 'Open Sample_004' }).click();
+	const viewer = page.getByRole('dialog', { name: 'Photo viewer' });
+	await expect(viewer).toBeVisible();
+
+	await page.getByRole('button', { name: 'Remove from favorites' }).click();
+	await expect(page.getByRole('button', { name: 'Add to favorites' })).toBeVisible();
+	await expect(viewer).toBeVisible();
+	await expect(page.getByText('Photo not found.')).toHaveCount(0);
+
+	await page.getByRole('button', { name: 'Close viewer' }).click();
+	await expect(page.getByText('No photos match your filters.')).toBeVisible();
+});
+
+test('a failed save rolls the star back and the message outlives the viewer', async ({ page }) => {
+	await openGallery(page);
+	await page.route('**/api/favorite', (route) => route.fulfill({ status: 500 }));
+	await page.getByRole('button', { name: 'Open Sample_005' }).click();
+	await page.getByRole('button', { name: 'Add to favorites' }).click();
+
+	const alert = page.getByRole('alert');
+	await expect(alert).toHaveText('Could not update the favorite for Sample_005. Please try again.');
+	await expect(page.getByRole('button', { name: 'Add to favorites' })).toBeVisible();
+
+	await page.getByRole('button', { name: 'Close viewer' }).click();
+	await expect(page.getByRole('dialog', { name: 'Photo viewer' })).toHaveCount(0);
+	await expect(alert).toBeVisible();
 });

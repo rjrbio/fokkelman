@@ -4,7 +4,11 @@
 	import PhotoGrid from '$lib/components/PhotoGrid.svelte';
 	import TopBar from '$lib/components/TopBar.svelte';
 	import UploadModal from '$lib/components/UploadModal.svelte';
-	import { clearFavoriteOverrides, withFavoriteOverrides } from '$lib/favorites.svelte';
+	import {
+		clearFavoriteOverrides,
+		favoriteFailure,
+		withFavoriteOverrides
+	} from '$lib/favorites.svelte';
 	import { filterPhotos, filtersFromSearchParams, uniqueFolders } from '$lib/filterPhotos';
 
 	let { data, children } = $props();
@@ -49,3 +53,25 @@
 {/if}
 
 {@render children()}
+
+<!-- Lives here, not in the viewer: it must survive the viewer closing or changing photo. -->
+{#if favoriteFailure.publicId}
+	<p class="toast" role="alert">
+		Could not update the favorite for {favoriteFailure.publicId}. Please try again.
+	</p>
+{/if}
+
+<style>
+	.toast {
+		position: fixed;
+		left: 50%;
+		bottom: 1.5rem;
+		transform: translateX(-50%);
+		z-index: 150; /* above the viewer overlay */
+		margin: 0;
+		padding: 0.6rem 1rem;
+		border-radius: 999px;
+		background: var(--danger);
+		color: white;
+	}
+</style>

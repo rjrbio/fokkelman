@@ -27,3 +27,14 @@ test('choosing a filter right after typing keeps what was typed', async ({ page 
 
 	await expect(page).toHaveURL(/\?q=Sample_01&fav=1$/);
 });
+
+test('a real filter change returns the grid to the first batch', async ({ page }) => {
+	const cells = page.getByTestId('photo-grid').getByRole('button');
+	await page.getByTestId('grid-sentinel').scrollIntoViewIfNeeded();
+	await expect(cells).toHaveCount(80);
+
+	await page.getByRole('searchbox', { name: 'Search photos' }).fill('Sample'); // matches all 80
+	await expect(page).toHaveURL(/[?&]q=Sample/);
+
+	await expect(cells).toHaveCount(60);
+});
