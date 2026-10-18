@@ -228,6 +228,11 @@
 		.bar {
 			gap: 0.5rem;
 		}
+		.brand {
+			display: inline-flex;
+			align-items: center;
+			min-height: 44px;
+		}
 		.wide-only {
 			display: none;
 		}
