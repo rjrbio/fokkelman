@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login, stubCdnImages } from './helpers';
+import { login, stubCdnImages, viewerDialog } from './helpers';
 
 test('the login page ships the security headers and a CSP', async ({ page }) => {
 	const response = await page.goto('/login');
@@ -21,7 +21,7 @@ test('the gallery and the viewer run without Content-Security-Policy violations'
 	await login(page);
 	await page.waitForLoadState('networkidle'); // hydration
 	await page.getByRole('button', { name: 'Abrir Sample_001' }).click();
-	await expect(page.getByRole('dialog', { name: 'Photo viewer' })).toBeVisible();
+	await expect(viewerDialog(page)).toBeVisible();
 	expect(violations).toEqual([]);
 });
 

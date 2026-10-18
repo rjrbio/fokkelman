@@ -10,6 +10,7 @@
 		withFavoriteOverrides
 	} from '$lib/favorites.svelte';
 	import { filterPhotos, filtersFromSearchParams, uniqueFolders } from '$lib/filterPhotos';
+	import { es } from '$lib/messages';
 
 	let { data, children } = $props();
 
@@ -22,6 +23,12 @@
 		void data.fetchedAt;
 		clearFavoriteOverrides();
 	});
+
+	// keepFocus: SvelteKit would otherwise blur the photo that was clicked, and the viewer could
+	// not hand the focus back to it when it closes.
+	function openPhoto(publicId: string) {
+		return goto(`/app/photo/${publicId}${page.url.search}`, { noScroll: true, keepFocus: true });
+	}
 
 	let showUpload = $state(false);
 
@@ -45,7 +52,7 @@
 	photos={filtered}
 	cloudName={data.cloudName}
 	resetKey={page.url.search}
-	onOpen={(publicId) => goto(`/app/photo/${publicId}${page.url.search}`, { noScroll: true })}
+	onOpen={openPhoto}
 />
 
 {#if showUpload}
@@ -57,7 +64,7 @@
 <!-- Lives here, not in the viewer: it must survive the viewer closing or changing photo. -->
 {#if favoriteFailure.publicId}
 	<p class="toast" role="alert">
-		Could not update the favorite for {favoriteFailure.publicId}. Please try again.
+		{es.app.favoriteFailed(favoriteFailure.publicId)}
 	</p>
 {/if}
 
@@ -72,6 +79,6 @@
 		padding: 0.6rem 1rem;
 		border-radius: 999px;
 		background: var(--danger);
-		color: white;
+		color: var(--on-accent);
 	}
 </style>

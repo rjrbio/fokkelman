@@ -24,3 +24,9 @@ export async function resetBackend(page: Page): Promise<void> {
 	if (!response.ok) throw new Error(`mock reset failed: ${response.status}`);
 	await page.request.post('/api/refresh-index');
 }
+
+export const viewerDialog = (page: Page) => page.getByRole('dialog', { name: 'Visor de fotos' });
+
+/** The ★ toggle of the open viewer (the top bar has its own "Favoritas" filter). */
+export const starButton = (page: Page) =>
+	viewerDialog(page).getByRole('button', { name: 'Favorita', exact: true });
