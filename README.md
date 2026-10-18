@@ -34,8 +34,8 @@ Environment variables* y **hay que redesplegar** tras cambiarlas.
 
 ### Si el login no funciona
 
-Si `/login` muestra *"Sign-in is unavailable: the server is not configured
-yet."*, busca en el log de las funciones de Netlify la línea
+Si `/login` muestra *"No se puede entrar ahora: el servidor aún no está
+configurado."*, busca en el log de las funciones de Netlify la línea
 `[auth] sign-in disabled: <código>`:
 
 - `missing-session-secret`: falta `SESSION_SECRET` (o está vacía).
@@ -46,7 +46,7 @@ yet."*, busca en el log de las funciones de Netlify la línea
 
 Un hash bien formado pero generado a partir de *otra* cadena (por ejemplo, si
 el shell se comió un `!` o un `$` de la contraseña) no desactiva el login: se
-ve como una contraseña mal escrita (*"Incorrect password."*). Se puede
+ve como una contraseña mal escrita (*"Contraseña incorrecta."*). Se puede
 comprobar en local con
 `node scripts/hash-password.mjs --check '<contraseña>' '<hash>'`
 (con comillas simples, para que el shell no toque la contraseña).

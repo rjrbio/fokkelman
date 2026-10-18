@@ -13,8 +13,8 @@ export async function stubCdnImages(page: Page): Promise<void> {
 
 export async function login(page: Page): Promise<void> {
 	await page.goto('/login');
-	await page.getByPlaceholder('Family password').fill('test-password');
-	await page.getByRole('button', { name: 'Sign in' }).click();
+	await page.getByLabel('Contraseña de la familia').fill('test-password');
+	await page.getByRole('button', { name: 'Entrar' }).click();
 	await page.waitForURL('**/app');
 }
 

@@ -23,9 +23,9 @@ async function stubLoginFailure(page: Page, status: number, devalueData: string)
 
 test('rejects a wrong password with a generic error', async ({ page }) => {
 	await page.goto('/login');
-	await page.getByPlaceholder('Family password').fill('nope');
-	await page.getByRole('button', { name: 'Sign in' }).click();
-	await expect(page.getByRole('alert')).toHaveText('Incorrect password.');
+	await page.getByLabel('Contraseña de la familia').fill('nope');
+	await page.getByRole('button', { name: 'Entrar' }).click();
+	await expect(page.getByRole('alert')).toHaveText('Contraseña incorrecta.');
 	expect(page.url()).toContain('/login');
 });
 
@@ -42,11 +42,11 @@ test('redirects an anonymous visitor from /app to /login', async ({ page }) => {
 test('the password can be revealed and hidden', async ({ page }) => {
 	await page.goto('/login');
 	await page.waitForLoadState('networkidle'); // wait for hydration before clicking
-	const input = page.getByPlaceholder('Family password');
+	const input = page.getByLabel('Contraseña de la familia');
 	await expect(input).toHaveAttribute('type', 'password');
-	await page.getByRole('button', { name: 'Show password' }).click();
+	await page.getByRole('button', { name: 'Mostrar contraseña' }).click();
 	await expect(input).toHaveAttribute('type', 'text');
-	await page.getByRole('button', { name: 'Hide password' }).click();
+	await page.getByRole('button', { name: 'Ocultar contraseña' }).click();
 	await expect(input).toHaveAttribute('type', 'password');
 });
 
@@ -56,21 +56,21 @@ test('says sign-in is unavailable, and disables the button, when the server is n
 	await stubLoginFailure(page, 503, '[{"misconfigured":1},true]');
 	await page.goto('/login');
 	await page.waitForLoadState('networkidle'); // wait for hydration before submitting
-	await page.getByPlaceholder('Family password').fill('any-password');
-	await page.getByRole('button', { name: 'Sign in' }).click();
+	await page.getByLabel('Contraseña de la familia').fill('any-password');
+	await page.getByRole('button', { name: 'Entrar' }).click();
 	await expect(page.getByRole('alert')).toHaveText(
-		'Sign-in is unavailable: the server is not configured yet.'
+		'No se puede entrar ahora: el servidor aún no está configurado.'
 	);
-	await expect(page.getByRole('button', { name: 'Sign in' })).toBeDisabled();
+	await expect(page.getByRole('button', { name: 'Entrar' })).toBeDisabled();
 });
 
 test('tells a locked-out visitor how long to wait', async ({ page }) => {
 	await stubLoginFailure(page, 429, '[{"locked":1,"retryAfterMin":2},true,2]');
 	await page.goto('/login');
 	await page.waitForLoadState('networkidle'); // wait for hydration before submitting
-	await page.getByPlaceholder('Family password').fill('any-password');
-	await page.getByRole('button', { name: 'Sign in' }).click();
-	await expect(page.getByRole('alert')).toHaveText('Too many attempts. Try again in 2 min.');
+	await page.getByLabel('Contraseña de la familia').fill('any-password');
+	await page.getByRole('button', { name: 'Entrar' }).click();
+	await expect(page.getByRole('alert')).toHaveText('Demasiados intentos. Vuelve a probar en 2 min.');
 	await expect(page.getByRole('alert')).toHaveCount(1);
-	await expect(page.getByRole('button', { name: 'Sign in' })).toBeEnabled();
+	await expect(page.getByRole('button', { name: 'Entrar' })).toBeEnabled();
 });
