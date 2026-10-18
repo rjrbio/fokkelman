@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { downloadUrl, fullUrl, thumbUrl } from './cdn';
+import { downloadUrl, fullUrl, thumbUrl, zoomUrl } from './cdn';
 import type { Photo } from './types';
 
 const photo: Photo = {
@@ -12,15 +12,21 @@ const photo: Photo = {
 };
 
 describe('cdn urls', () => {
-	it('builds a square auto-format thumbnail without extension', () => {
+	it('builds a thumbnail that keeps the photo shape and is never upscaled', () => {
 		expect(thumbUrl('democloud', photo)).toBe(
-			'https://res.cloudinary.com/democloud/image/upload/c_fill,f_auto,q_auto,w_400,h_400/family_uploads/abc123'
+			'https://res.cloudinary.com/democloud/image/upload/c_limit,f_auto,q_auto,w_800,h_480/family_uploads/abc123'
 		);
 	});
 
-	it('builds a large view url without extension', () => {
+	it('builds the viewer url, never upscaled', () => {
 		expect(fullUrl('democloud', photo)).toBe(
-			'https://res.cloudinary.com/democloud/image/upload/f_auto,q_auto,w_1600/family_uploads/abc123'
+			'https://res.cloudinary.com/democloud/image/upload/c_limit,f_auto,q_auto,w_1600/family_uploads/abc123'
+		);
+	});
+
+	it('builds a larger url for full screen and zoom', () => {
+		expect(zoomUrl('democloud', photo)).toBe(
+			'https://res.cloudinary.com/democloud/image/upload/c_limit,f_auto,q_auto,w_2400/family_uploads/abc123'
 		);
 	});
 
