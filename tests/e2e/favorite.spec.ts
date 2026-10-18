@@ -22,8 +22,8 @@ test('marks a photo as favorite and finds it with the filter', async ({ page }) 
 	await expect(starButton(page)).toHaveAttribute('aria-pressed', 'true');
 
 	await closeViewer(page);
-	await page.getByRole('button', { name: '★ Favorites' }).click();
-	await expect(page.getByText('1 photos')).toBeVisible();
+	await page.getByRole('button', { name: 'Favoritas', exact: true }).click();
+	await expect(page.getByText('1 foto', { exact: true })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Abrir Sample_001' })).toBeVisible();
 });
 
@@ -98,7 +98,7 @@ test('un-starring from the favorites view keeps the viewer open on that photo', 
 	await expect(starButton(page)).toHaveAttribute('aria-pressed', 'true');
 	await closeViewer(page);
 
-	await page.getByRole('button', { name: '★ Favorites' }).click();
+	await page.getByRole('button', { name: 'Favoritas', exact: true }).click();
 	await page.getByRole('button', { name: 'Abrir Sample_004' }).click();
 	await expect(viewerDialog(page)).toBeVisible();
 

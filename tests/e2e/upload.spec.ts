@@ -13,7 +13,7 @@ test('uploads a photo with a server-issued signature', async ({ page }) => {
 	// See favorite.spec.ts: wait for the client to hydrate before the first interaction.
 	await page.waitForLoadState('networkidle');
 
-	await page.getByRole('button', { name: 'Upload' }).click();
+	await page.getByRole('button', { name: 'Subir' }).click();
 	await page.setInputFiles('input[type=file]', {
 		name: 'holiday.jpg',
 		mimeType: 'image/jpeg',
@@ -34,7 +34,7 @@ test('ignores a file that is already in the queue instead of crashing', async ({
 	await login(page);
 	await page.waitForLoadState('networkidle'); // hydration
 
-	await page.getByRole('button', { name: 'Upload' }).click();
+	await page.getByRole('button', { name: 'Subir' }).click();
 	const photo = {
 		name: 'holiday.jpg',
 		mimeType: 'image/jpeg',

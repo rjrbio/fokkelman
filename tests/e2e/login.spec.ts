@@ -31,7 +31,7 @@ test('rejects a wrong password with a generic error', async ({ page }) => {
 
 test('signs in with the family password and lands on the gallery', async ({ page }) => {
 	await login(page);
-	await expect(page.getByText('80 photos')).toBeVisible();
+	await expect(page.getByText('80 fotos')).toBeVisible();
 });
 
 test('redirects an anonymous visitor from /app to /login', async ({ page }) => {

@@ -38,7 +38,7 @@
 	}
 </script>
 
-<svelte:head><title>Fokkelman Photo Vault</title></svelte:head>
+<svelte:head><title>{es.app.title}</title></svelte:head>
 
 <TopBar
 	folders={uniqueFolders(photos)}
@@ -48,12 +48,15 @@
 	onUpload={() => (showUpload = true)}
 />
 
-<PhotoGrid
-	photos={filtered}
-	cloudName={data.cloudName}
-	resetKey={page.url.search}
-	onOpen={openPhoto}
-/>
+<main>
+	<h1 class="sr-only">{es.app.heading}</h1>
+	<PhotoGrid
+		photos={filtered}
+		cloudName={data.cloudName}
+		resetKey={page.url.search}
+		onOpen={openPhoto}
+	/>
+</main>
 
 {#if showUpload}
 	<UploadModal folder={filters.folder} onClose={onUploadClosed} />
@@ -69,6 +72,12 @@
 {/if}
 
 <style>
+	@media (max-width: 720px) {
+		/* Room for the tab bar fixed to the bottom of the screen. */
+		main {
+			padding-bottom: calc(56px + env(safe-area-inset-bottom));
+		}
+	}
 	.toast {
 		position: fixed;
 		left: 50%;
