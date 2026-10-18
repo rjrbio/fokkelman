@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { thumbUrl } from '$lib/cdn';
+	import { getMessages } from '$lib/i18n';
+	import { layoutRows } from '$lib/justifiedRows';
 	import type { Photo } from '$lib/types';
 
 	let {
@@ -10,31 +12,54 @@
 	}: {
 		photos: Photo[];
 		cloudName: string;
-		/** The visible batch goes back to the first page only when this key changes (i.e. the filters), not on every data refresh. */
+		/** The visible rows go back to the first batch only when this key changes (i.e. the filters), not on every data refresh. */
 		resetKey?: string;
 		onOpen: (publicId: string) => void;
 	} = $props();
 
-	const BATCH = 60;
-	let visibleCount = $state(BATCH);
+	const m = getMessages().grid;
+
+	/** Rows drawn at first, and added each time the end of the page comes near. */
+	const ROW_BATCH = 12;
+	/** Space between photos, in px, horizontally and between rows. */
+	const GAP = 3;
+	/** Rows aim for this height on a computer, and for the smaller one when the container is phone-sized. */
+	const TARGET_HEIGHT = 180;
+	const COMPACT_TARGET_HEIGHT = 120;
+	const COMPACT_BELOW = 640;
+
+	let width = $state(0);
+	let visibleRows = $state(ROW_BATCH);
 	let sentinel = $state<HTMLElement>();
 
-	// Un $derived compara por valor: una prop que se reevalúa (p. ej. `page.url.search` en cada
-	// navegación) pero devuelve la misma cadena no reinicia el lote visible.
+	// Zero until the browser has measured the container, which gives no rows.
+	const rows = $derived(
+		layoutRows(photos, {
+			containerWidth: width,
+			targetHeight: width < COMPACT_BELOW ? COMPACT_TARGET_HEIGHT : TARGET_HEIGHT,
+			gap: GAP
+		})
+	);
+
+	// A $derived compares by value: a prop that is re-evaluated (e.g. `page.url.search` on every
+	// navigation) but yields the same string does not reset the visible rows.
 	const key = $derived(resetKey);
 
-	// Al cambiar los filtros, volver al primer lote
+	// When the filters change, back to the first batch.
 	$effect(() => {
 		void key;
-		visibleCount = BATCH;
+		visibleRows = ROW_BATCH;
 	});
 
 	$effect(() => {
+		// Depending on `visibleRows` re-creates the observer after each batch, and a new observer
+		// reports the current state at once: a tall screen keeps loading until the sentinel is far.
+		void visibleRows;
 		if (!sentinel) return;
 		const io = new IntersectionObserver(
 			(entries) => {
 				if (entries[0].isIntersecting) {
-					visibleCount = Math.min(visibleCount + BATCH, photos.length);
+					visibleRows = Math.min(visibleRows + ROW_BATCH, rows.length);
 				}
 			},
 			{ rootMargin: '600px' }
@@ -44,58 +69,77 @@
 	});
 </script>
 
-{#if photos.length === 0}
-	<p class="empty">No photos match your filters.</p>
-{:else}
-	<div class="grid" data-testid="photo-grid">
-		{#each photos.slice(0, visibleCount) as photo (photo.publicId)}
-			<button class="cell" onclick={() => onOpen(photo.publicId)} aria-label="Open {photo.publicId}">
-				<img src={thumbUrl(cloudName, photo)} alt="" loading="lazy" />
-				{#if photo.favorite}<span class="star" aria-hidden="true">★</span>{/if}
-			</button>
+<div class="grid" data-testid="photo-grid" style:gap="{GAP}px" bind:clientWidth={width}>
+	{#if photos.length === 0}
+		<p class="empty">{m.empty}</p>
+	{:else}
+		{#each rows.slice(0, visibleRows) as row (row.items[0].item.publicId)}
+			<div class="row" data-testid="photo-row" style:height="{row.height}px" style:gap="{GAP}px">
+				{#each row.items as placed (placed.item.publicId)}
+					<button
+						class="cell"
+						style:width="{placed.width}px"
+						aria-label={m.open(placed.item.publicId)}
+						onclick={() => onOpen(placed.item.publicId)}
+					>
+						<img src={thumbUrl(cloudName, placed.item)} alt="" loading="lazy" />
+						{#if placed.item.favorite}<span class="star" aria-hidden="true">★</span>{/if}
+					</button>
+				{/each}
+			</div>
 		{/each}
-	</div>
-	{#if visibleCount < photos.length}
-		<div bind:this={sentinel} class="sentinel" data-testid="grid-sentinel"></div>
+		{#if visibleRows < rows.length}
+			<div bind:this={sentinel} class="sentinel" data-testid="grid-sentinel"></div>
+		{/if}
 	{/if}
-{/if}
+</div>
 
 <style>
 	.grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-		gap: 4px;
-		padding: 4px;
+		display: flex;
+		flex-direction: column;
+	}
+	.row {
+		display: flex;
 	}
 	.cell {
 		position: relative;
+		flex: none;
+		display: block;
+		height: 100%;
 		padding: 0;
 		border: none;
-		background: var(--surface);
-		aspect-ratio: 1;
+		border-radius: 2px;
+		/* Shown while the thumbnail loads. */
+		background: var(--chip);
 		overflow: hidden;
-		border-radius: 4px;
 	}
 	.cell img {
+		display: block;
 		width: 100%;
 		height: 100%;
+		/* The cell already has the photo's shape; this only trims panoramas and very tall photos. */
 		object-fit: cover;
-		display: block;
+	}
+	.cell:focus-visible {
+		outline-offset: -3px;
 	}
 	.star {
 		position: absolute;
 		bottom: 6px;
 		left: 8px;
-		color: white;
-		text-shadow: 0 1px 3px rgb(0 0 0 / 0.7);
+		color: var(--accent);
 		font-size: 1.1rem;
+		line-height: 1;
+		text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
 	}
 	.sentinel {
 		height: 1px;
 	}
 	.empty {
-		padding: 3rem;
+		margin: 0;
+		padding: 3rem 1rem;
 		text-align: center;
-		color: var(--text-dim);
+		color: var(--dim);
 	}
 </style>

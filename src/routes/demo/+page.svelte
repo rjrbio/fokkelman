@@ -4,8 +4,12 @@
 	import PhotoGrid from '$lib/components/PhotoGrid.svelte';
 	import { getDemoFavorites, toggleDemoFavorite } from '$lib/demoFavorites';
 	import { filterPhotos } from '$lib/filterPhotos';
+	import { setMessages } from '$lib/i18n';
+	import { en } from '$lib/messages';
 
 	let { data } = $props();
+
+	setMessages(en);
 
 	let favorites = $state(browser ? getDemoFavorites() : new Set<string>());
 	let query = $state('');

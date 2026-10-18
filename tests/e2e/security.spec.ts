@@ -20,7 +20,7 @@ test('the gallery and the viewer run without Content-Security-Policy violations'
 	await stubCdnImages(page);
 	await login(page);
 	await page.waitForLoadState('networkidle'); // hydration
-	await page.getByRole('button', { name: 'Open Sample_001' }).click();
+	await page.getByRole('button', { name: 'Abrir Sample_001' }).click();
 	await expect(page.getByRole('dialog', { name: 'Photo viewer' })).toBeVisible();
 	expect(violations).toEqual([]);
 });

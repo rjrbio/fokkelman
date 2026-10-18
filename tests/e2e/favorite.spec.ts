@@ -15,7 +15,7 @@ async function openGallery(page: Page) {
 test('marks a photo as favorite and finds it with the filter', async ({ page }) => {
 	await openGallery(page);
 
-	await page.getByRole('button', { name: 'Open Sample_001' }).click();
+	await page.getByRole('button', { name: 'Abrir Sample_001' }).click();
 	const favButton = page.getByRole('button', { name: 'Add to favorites' });
 	await favButton.click();
 	await expect(page.getByRole('button', { name: 'Remove from favorites' })).toBeVisible();
@@ -23,12 +23,12 @@ test('marks a photo as favorite and finds it with the filter', async ({ page }) 
 	await page.getByRole('button', { name: 'Close viewer' }).click();
 	await page.getByRole('button', { name: '★ Favorites' }).click();
 	await expect(page.getByText('1 photos')).toBeVisible();
-	await expect(page.getByRole('button', { name: 'Open Sample_001' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Abrir Sample_001' })).toBeVisible();
 });
 
 test('toggling a favorite does not reload the photo index', async ({ page }) => {
 	await openGallery(page);
-	await page.getByRole('button', { name: 'Open Sample_001' }).click();
+	await page.getByRole('button', { name: 'Abrir Sample_001' }).click();
 	await expect(page.getByRole('dialog', { name: 'Photo viewer' })).toBeVisible();
 
 	const reloads: string[] = [];
@@ -50,18 +50,18 @@ test('favoriting deep in the grid keeps the loaded photos and the scroll positio
 	await page.getByTestId('grid-sentinel').scrollIntoViewIfNeeded();
 	await expect(cells).toHaveCount(80);
 
-	await page.getByRole('button', { name: 'Open Sample_075' }).click();
+	await page.getByRole('button', { name: 'Abrir Sample_075' }).click();
 	await page.getByRole('button', { name: 'Add to favorites' }).click();
 	await expect(page.getByRole('button', { name: 'Remove from favorites' })).toBeVisible();
 	await page.getByRole('button', { name: 'Close viewer' }).click();
 
 	await expect(cells).toHaveCount(80);
-	await expect(page.getByRole('button', { name: 'Open Sample_075' })).toBeInViewport();
+	await expect(page.getByRole('button', { name: 'Abrir Sample_075' })).toBeInViewport();
 });
 
 test('a double tap on the star sends one request and ends up favorited', async ({ page }) => {
 	await openGallery(page);
-	await page.getByRole('button', { name: 'Open Sample_002' }).click();
+	await page.getByRole('button', { name: 'Abrir Sample_002' }).click();
 
 	let requests = 0;
 	page.on('request', (request) => {
@@ -79,7 +79,7 @@ test('an expired session while the viewer is open sends the user back to sign in
 	context
 }) => {
 	await openGallery(page);
-	await page.getByRole('button', { name: 'Open Sample_003' }).click();
+	await page.getByRole('button', { name: 'Abrir Sample_003' }).click();
 	await expect(page.getByRole('dialog', { name: 'Photo viewer' })).toBeVisible();
 
 	await context.clearCookies();
@@ -92,13 +92,13 @@ test('un-starring from the favorites view keeps the viewer open on that photo', 
 	page
 }) => {
 	await openGallery(page);
-	await page.getByRole('button', { name: 'Open Sample_004' }).click();
+	await page.getByRole('button', { name: 'Abrir Sample_004' }).click();
 	await page.getByRole('button', { name: 'Add to favorites' }).click();
 	await expect(page.getByRole('button', { name: 'Remove from favorites' })).toBeVisible();
 	await page.getByRole('button', { name: 'Close viewer' }).click();
 
 	await page.getByRole('button', { name: '★ Favorites' }).click();
-	await page.getByRole('button', { name: 'Open Sample_004' }).click();
+	await page.getByRole('button', { name: 'Abrir Sample_004' }).click();
 	const viewer = page.getByRole('dialog', { name: 'Photo viewer' });
 	await expect(viewer).toBeVisible();
 
@@ -108,13 +108,13 @@ test('un-starring from the favorites view keeps the viewer open on that photo', 
 	await expect(page.getByText('Photo not found.')).toHaveCount(0);
 
 	await page.getByRole('button', { name: 'Close viewer' }).click();
-	await expect(page.getByText('No photos match your filters.')).toBeVisible();
+	await expect(page.getByText('Ninguna foto coincide con los filtros.')).toBeVisible();
 });
 
 test('a failed save rolls the star back and the message outlives the viewer', async ({ page }) => {
 	await openGallery(page);
 	await page.route('**/api/favorite', (route) => route.fulfill({ status: 500 }));
-	await page.getByRole('button', { name: 'Open Sample_005' }).click();
+	await page.getByRole('button', { name: 'Abrir Sample_005' }).click();
 	await page.getByRole('button', { name: 'Add to favorites' }).click();
 
 	const alert = page.getByRole('alert');
