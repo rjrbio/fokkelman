@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterPhotos, filtersFromSearchParams, uniqueFolders } from './filterPhotos';
+import { filterPhotos, filtersFromSearchParams, filtersToSearch, uniqueFolders } from './filterPhotos';
 import type { Photo } from './types';
 
 const photo = (publicId: string, folder = '', favorite = false): Photo => ({
@@ -62,5 +62,22 @@ describe('filtersFromSearchParams', () => {
 describe('uniqueFolders', () => {
 	it('returns sorted unique non-root folders', () => {
 		expect(uniqueFolders(photos)).toEqual(['family_uploads']);
+	});
+});
+
+describe('filtersToSearch', () => {
+	it('is empty when no filter is active', () => {
+		expect(filtersToSearch({ folder: '', query: '', favoritesOnly: false })).toBe('');
+	});
+
+	it('serializes every active filter in a stable order', () => {
+		expect(filtersToSearch({ folder: 'family_uploads', query: 'beach', favoritesOnly: true })).toBe(
+			'?folder=family_uploads&q=beach&fav=1'
+		);
+	});
+
+	it('round-trips through filtersFromSearchParams, including special characters', () => {
+		const filters = { folder: 'vacaciones 2019', query: 'ñandú & co', favoritesOnly: true };
+		expect(filtersFromSearchParams(new URLSearchParams(filtersToSearch(filters)))).toEqual(filters);
 	});
 });
