@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
@@ -47,5 +48,28 @@ describe('colour tokens', () => {
 	it('follows the design: near-black background with an amber accent', () => {
 		expect(token('bg')).toBe('#0f0f10');
 		expect(token('accent')).toBe('#f0b429');
+	});
+});
+
+/** Every .svelte file under src/. */
+function svelteFiles(dir: string): string[] {
+	return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+		entry.isDirectory()
+			? svelteFiles(join(dir, entry.name))
+			: entry.name.endsWith('.svelte')
+				? [join(dir, entry.name)]
+				: []
+	);
+}
+
+describe('design tokens in use', () => {
+	const sources = svelteFiles(new URL('..', import.meta.url).pathname);
+
+	it('only references tokens that app.css defines', () => {
+		const defined = new Set([...css.matchAll(/(--[a-z-]+)\s*:/g)].map((match) => match[1]));
+		for (const file of sources) {
+			const used = [...readFileSync(file, 'utf8').matchAll(/var\((--[a-z-]+)/g)].map((m) => m[1]);
+			for (const name of used) expect(defined.has(name), `${name} in ${file}`).toBe(true);
+		}
 	});
 });

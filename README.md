@@ -58,6 +58,14 @@ npm run test:unit   # Vitest
 npm run test:e2e    # Playwright (levanta un mock de Cloudinary, no usa red)
 ```
 
+Playwright corre dos proyectos: `desktop` (Chromium de escritorio) y `mobile`
+(un Chromium con pantalla táctil de 412×839, solo `tests/e2e/mobile.spec.ts`).
+`tests/e2e/a11y.spec.ts` y el final de `mobile.spec.ts` pasan
+[axe-core](https://github.com/dequelabs/axe-core) (el motor de la puntuación de
+accesibilidad de Lighthouse) por el login, la galería, el visor, la subida, la
+demo y la landing, y fallan ante cualquier fallo WCAG 2.1 A/AA. Los contrastes
+de la paleta los fija `src/lib/tokens.test.ts`.
+
 ## Arquitectura en corto
 
 - El navegador nunca ve el API secret: búsqueda, favoritos (tag `favorite`)
@@ -75,3 +83,17 @@ npm run test:e2e    # Playwright (levanta un mock de Cloudinary, no usa red)
   sofisticados.
 - Zona pública: landing (`/`) y demo interactiva (`/demo`, carpeta `demo`
   de Cloudinary, favoritos solo en localStorage del visitante).
+- Interfaz: galería oscura con los colores y medidas como variables CSS en
+  `src/app.css` y la tipografía Inter autoalojada (`@fontsource-variable/inter`,
+  sin Google Fonts). La rejilla son filas justificadas por la proporción real de
+  cada foto (`src/lib/justifiedRows.ts`, sin recortar), que se dibujan por lotes
+  de filas al hacer scroll. Las miniaturas y las versiones grandes se piden a
+  Cloudinary con `c_limit` (nunca se amplía una foto).
+- Visor: panel de datos, pantalla completa (botón, tecla `F` o doble toque; en
+  iPhone, que no ofrece la pantalla completa del navegador, queda el modo sin
+  panel), zoom con rueda, pellizco o teclas `+` `-` `0`, y precarga de las
+  fotos vecinas. La versión de 2400 px solo se pide al ampliar o en pantalla
+  completa; el original, solo en *Descargar*.
+- Idioma: la zona familiar (`/app`, `/login`) está en español y la landing y la
+  demo en inglés. Todos los textos están en `src/lib/messages.ts`, y el hook
+  pone el `lang` de `<html>` según la ruta.
