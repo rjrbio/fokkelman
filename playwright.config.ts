@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 import { hashPassword } from './src/lib/server/session';
 
 const appEnv = {
@@ -13,6 +13,11 @@ const appEnv = {
 export default defineConfig({
 	testDir: 'tests/e2e',
 	use: { baseURL: 'http://localhost:5199' },
+	projects: [
+		{ name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /mobile\.spec\.ts/ },
+		// A phone-sized, touch-enabled Chromium: the family mostly looks at photos on their phones.
+		{ name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /mobile\.spec\.ts/ }
+	],
 	webServer: [
 		{
 			command: 'node tests/e2e/mock-cloudinary.mjs',

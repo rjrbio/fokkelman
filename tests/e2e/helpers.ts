@@ -30,3 +30,24 @@ export const viewerDialog = (page: Page) => page.getByRole('dialog', { name: 'Vi
 /** The ★ toggle of the open viewer (the top bar has its own "Favoritas" filter). */
 export const starButton = (page: Page) =>
 	viewerDialog(page).getByRole('button', { name: 'Favorita', exact: true });
+
+export interface TouchPoint {
+	x: number;
+	y: number;
+}
+
+/**
+ * Plays a multi-finger gesture with real touch events (Chromium only). Each step lists where every
+ * finger is; an empty step lifts them all.
+ */
+export async function touchGesture(page: Page, steps: TouchPoint[][]): Promise<void> {
+	const cdp = await page.context().newCDPSession(page);
+	for (let i = 0; i < steps.length; i++) {
+		const fingers = steps[i];
+		const type = i === 0 ? 'touchStart' : fingers.length === 0 ? 'touchEnd' : 'touchMove';
+		await cdp.send('Input.dispatchTouchEvent', {
+			type,
+			touchPoints: fingers.map((point, id) => ({ x: point.x, y: point.y, id }))
+		});
+	}
+}
