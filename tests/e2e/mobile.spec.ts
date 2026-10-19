@@ -1,5 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
-import { login, starButton, stubCdnImages, touchGesture, viewerDialog } from './helpers';
+import {
+	expectNoA11yViolations,
+	login,
+	starButton,
+	stubCdnImages,
+	touchGesture,
+	viewerDialog
+} from './helpers';
 
 // Runs in the "mobile" project (see playwright.config.ts): a 412×839 touch screen.
 
@@ -192,5 +199,25 @@ test.describe('viewer', () => {
 		await expect(page.getByTestId('zoomable')).toHaveAttribute('data-scale', '1.00');
 		await touchGesture(page, [[{ x: cx + 100, y: cy }], [{ x: cx, y: cy }], [{ x: cx - 100, y: cy }], []]);
 		await expect(page).toHaveURL(/\/app\/photo\/Sample_002$/);
+	});
+});
+
+test.describe('accessibility on a phone', () => {
+	test('the gallery with the search open', async ({ page }) => {
+		await page.getByRole('button', { name: 'Buscar fotos' }).tap();
+		await expect(page.getByRole('searchbox', { name: 'Buscar fotos' })).toBeVisible();
+		await expectNoA11yViolations(page);
+	});
+
+	test('the options sheet', async ({ page }) => {
+		await page.getByRole('button', { name: 'Opciones' }).tap();
+		await expect(page.getByRole('dialog', { name: 'Opciones' })).toBeVisible();
+		await expectNoA11yViolations(page);
+	});
+
+	test('the viewer', async ({ page }) => {
+		await page.getByRole('button', { name: 'Abrir Sample_001' }).tap();
+		await expect(viewerDialog(page)).toBeVisible();
+		await expectNoA11yViolations(page);
 	});
 });

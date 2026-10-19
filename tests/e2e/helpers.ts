@@ -1,4 +1,5 @@
-import type { Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { expect, type Page } from '@playwright/test';
 
 const TINY_PNG = Buffer.from(
 	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -50,4 +51,20 @@ export async function touchGesture(page: Page, steps: TouchPoint[][]): Promise<v
 			touchPoints: fingers.map((point, id) => ({ x: point.x, y: point.y, id }))
 		});
 	}
+}
+
+/**
+ * Fails with a readable list when axe-core (the engine behind Lighthouse's accessibility score)
+ * finds a WCAG 2.1 A/AA problem, or a heading/landmark slip, in what is on screen right now.
+ */
+export async function expectNoA11yViolations(page: Page): Promise<void> {
+	const { violations } = await new AxeBuilder({ page })
+		.withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'])
+		.analyze();
+	const report = violations.map(
+		(violation) =>
+			`${violation.id} (${violation.impact}): ${violation.help}\n` +
+			violation.nodes.map((node) => `    ${node.target.join(' ')}`).join('\n')
+	);
+	expect(report, report.join('\n')).toEqual([]);
 }
