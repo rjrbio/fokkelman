@@ -95,5 +95,6 @@ de la paleta los fija `src/lib/tokens.test.ts`.
   fotos vecinas. La versión de 2400 px solo se pide al ampliar o en pantalla
   completa; el original, solo en *Descargar*.
 - Idioma: la zona familiar (`/app`, `/login`) está en español y la landing y la
-  demo en inglés. Todos los textos están en `src/lib/messages.ts`, y el hook
-  pone el `lang` de `<html>` según la ruta.
+  demo en inglés. Los textos de la interfaz (familia, error, rejilla, visor,
+  demo) están en `src/lib/messages.ts`; la landing tiene su texto en la propia
+  página hasta la Fase 4. El hook pone el `lang` de `<html>` según la ruta.

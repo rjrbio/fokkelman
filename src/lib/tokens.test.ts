@@ -66,6 +66,7 @@ describe('design tokens in use', () => {
 	const sources = svelteFiles(new URL('..', import.meta.url).pathname);
 
 	it('only references tokens that app.css defines', () => {
+		expect(sources.length, 'no .svelte files found under src/').toBeGreaterThan(0);
 		const defined = new Set([...css.matchAll(/(--[a-z-]+)\s*:/g)].map((match) => match[1]));
 		for (const file of sources) {
 			const used = [...readFileSync(file, 'utf8').matchAll(/var\((--[a-z-]+)/g)].map((m) => m[1]);
