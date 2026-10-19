@@ -31,15 +31,24 @@ test('fits the screen: no sideways scroll, phone controls instead of the desktop
 });
 
 test('every control is at least 44px, the size of a fingertip', async ({ page }) => {
-	const small = await page.evaluate(() => {
+	const { checked, small } = await page.evaluate(() => {
 		const controls = [
 			...document.querySelectorAll<HTMLElement>('header button, header a, nav button, nav a')
 		].filter((el) => el.getClientRects().length > 0 && !el.closest('.sr-only'));
-		return controls
-			.map((el) => ({ name: el.getAttribute('aria-label') ?? el.textContent?.trim(), box: el.getBoundingClientRect() }))
-			.filter(({ box }) => box.width < 44 || box.height < 44)
-			.map(({ name, box }) => `${name}: ${Math.round(box.width)}×${Math.round(box.height)}`);
+		const measured = controls.map((el) => ({
+			name: el.getAttribute('aria-label') ?? el.textContent?.trim() ?? '',
+			box: el.getBoundingClientRect()
+		}));
+		return {
+			checked: measured.map(({ name }) => name),
+			small: measured
+				.filter(({ box }) => box.width < 44 || box.height < 44)
+				.map(({ name, box }) => `${name}: ${Math.round(box.width)}×${Math.round(box.height)}`)
+		};
 	});
+	// The brand link, search, options and the four tabs: without this, a selector that matches nothing
+	// would make the test pass vacuously.
+	expect(checked.length, `measured: ${JSON.stringify(checked)}`).toBeGreaterThanOrEqual(7);
 	expect(small).toEqual([]);
 });
 
