@@ -1,17 +1,29 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { es } from '$lib/messages';
+
+	const m = es.login;
 	let { data, form } = $props();
 
 	let showPassword = $state(false);
 	const unavailable = $derived(Boolean(data.misconfigured || form?.misconfigured));
+	const error = $derived(
+		unavailable
+			? m.unavailable
+			: form?.locked
+				? m.locked(form.retryAfterMin)
+				: form?.incorrect
+					? m.incorrect
+					: ''
+	);
 </script>
 
-<svelte:head><title>Sign in · Fokkelman Photo Vault</title></svelte:head>
+<svelte:head><title>{m.title}</title></svelte:head>
 
 <main>
 	<form method="POST" use:enhance>
-		<h1>Fokkelman Photo Vault</h1>
-		<p>Enter the family password to continue.</p>
+		<h1>{m.heading}</h1>
+		<p class="lede">{m.lede}</p>
 
 		<!-- Hidden username so password managers can save and fill the credential. -->
 		<input
@@ -26,36 +38,36 @@
 		/>
 
 		<div class="field">
-			<input
-				type={showPassword ? 'text' : 'password'}
-				name="password"
-				placeholder="Family password"
-				autocomplete="current-password"
-				autocapitalize="off"
-				autocorrect="off"
-				spellcheck="false"
-				required
-			/>
-			<button
-				type="button"
-				class="toggle"
-				aria-label={showPassword ? 'Hide password' : 'Show password'}
-				onclick={() => (showPassword = !showPassword)}
-			>
-				{showPassword ? 'Hide' : 'Show'}
-			</button>
+			<label for="password">{m.passwordLabel}</label>
+			<div class="control">
+				<input
+					id="password"
+					type={showPassword ? 'text' : 'password'}
+					name="password"
+					autocomplete="current-password"
+					autocapitalize="off"
+					autocorrect="off"
+					spellcheck="false"
+					required
+					aria-invalid={form?.incorrect ? 'true' : undefined}
+					aria-describedby={error ? 'login-error' : undefined}
+				/>
+				<button
+					type="button"
+					class="toggle"
+					aria-controls="password"
+					aria-label={showPassword ? m.hidePassword : m.showPassword}
+					onclick={() => (showPassword = !showPassword)}
+				>
+					{showPassword ? m.hide : m.show}
+				</button>
+			</div>
 		</div>
 
-		<button type="submit" disabled={unavailable}>Sign in</button>
+		<button type="submit" class="submit" disabled={unavailable}>{m.submit}</button>
 
-		{#if unavailable}
-			<p class="error" role="alert">Sign-in is unavailable: the server is not configured yet.</p>
-		{:else if form?.locked}
-			<p class="error" role="alert">
-				Too many attempts. Try again in {form.retryAfterMin} min.
-			</p>
-		{:else if form?.incorrect}
-			<p class="error" role="alert">Incorrect password.</p>
+		{#if error}
+			<p id="login-error" class="error" role="alert">{error}</p>
 		{/if}
 	</form>
 </main>
@@ -63,68 +75,78 @@
 <style>
 	main {
 		min-height: 100vh;
+		min-height: 100dvh;
 		display: grid;
 		place-items: center;
-		background: var(--surface);
+		padding: 1rem;
 	}
 	form {
-		background: var(--bg);
-		padding: 2.5rem;
-		border-radius: var(--radius);
-		box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
 		display: grid;
-		gap: 1rem;
-		width: min(90vw, 380px);
+		gap: 1.25rem;
+		width: min(100%, 380px);
+		padding: 2.5rem 2rem;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--bar);
 	}
 	h1 {
 		margin: 0;
-		font-size: 1.4rem;
+		font-size: 1.5rem;
+		letter-spacing: -0.01em;
 	}
-	p {
+	.lede {
 		margin: 0;
-		color: var(--text-dim);
+		color: var(--dim);
 	}
 	.field {
+		display: grid;
+		gap: 0.4rem;
+	}
+	label {
+		font-size: 0.9rem;
+		color: var(--dim);
+	}
+	.control {
 		position: relative;
 		display: grid;
 	}
-	.field input {
-		font: inherit;
-		padding: 0.75rem 4.5rem 0.75rem 0.75rem;
-		border: 1px solid var(--text-dim);
+	.control input {
+		min-height: 48px;
+		padding: 0.75rem 5.5rem 0.75rem 0.85rem;
+		border: 1px solid var(--dim);
 		border-radius: var(--radius);
+		background: var(--bg);
+	}
+	.control input[aria-invalid='true'] {
+		border-color: var(--danger);
 	}
 	.toggle {
 		position: absolute;
-		right: 0.4rem;
 		top: 50%;
+		right: 0.25rem;
 		transform: translateY(-50%);
-		padding: 0.4rem 0.6rem;
+		min-width: 44px;
+		min-height: 44px;
+		padding: 0 0.75rem;
 		border: none;
+		border-radius: var(--radius);
 		background: none;
-		color: var(--text-dim);
+		color: var(--dim);
 	}
-	button[type='submit'] {
-		padding: 0.75rem;
+	.submit {
+		min-height: 48px;
 		border: none;
 		border-radius: var(--radius);
 		background: var(--accent);
-		color: white;
+		color: var(--on-accent);
 		font-weight: 600;
 	}
-	button[type='submit']:disabled {
+	.submit:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
 	.error {
+		margin: 0;
 		color: var(--danger);
-	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		overflow: hidden;
-		clip: rect(0 0 0 0);
-		white-space: nowrap;
 	}
 </style>

@@ -5,7 +5,10 @@
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import { toggleFavorite, withFavoriteOverrides } from '$lib/favorites.svelte';
 	import { filterPhotos, filtersFromSearchParams } from '$lib/filterPhotos';
+	import { es } from '$lib/messages';
 	import type { Photo } from '$lib/types';
+
+	const m = es.viewer;
 
 	const cloudName = $derived(page.data.cloudName as string);
 	// Who belongs to the list is decided from the server data plus the overrides as they stood
@@ -25,11 +28,15 @@
 	const list = $derived(withFavoriteOverrides(base));
 	const index = $derived(list.findIndex((p) => p.publicId === page.params.id));
 	const photo = $derived(index >= 0 ? list[index] : undefined);
+	const neighbours = $derived([list[index - 1], list[index + 1]].filter((p): p is Photo => Boolean(p)));
 
+	// keepFocus everywhere: after a navigation SvelteKit moves the focus to the page, which would
+	// pull it out of the viewer (or off the photo the viewer must hand it back to).
 	function goTo(i: number) {
 		goto(`/app/photo/${list[i].publicId}${page.url.search}`, {
 			replaceState: true,
-			noScroll: true
+			noScroll: true,
+			keepFocus: true
 		});
 	}
 
@@ -55,15 +62,17 @@
 		{photo}
 		{cloudName}
 		favorite={photo.favorite}
-		onClose={() => goto(`/app${page.url.search}`, { noScroll: true })}
+		position={{ index: index + 1, total: list.length }}
+		preload={neighbours}
+		onClose={() => goto(`/app${page.url.search}`, { noScroll: true, keepFocus: true })}
 		onPrev={index > 0 ? () => goTo(index - 1) : undefined}
 		onNext={index < list.length - 1 ? () => goTo(index + 1) : undefined}
 		{onToggleFavorite}
 	/>
 {:else}
 	<div class="missing">
-		<p>Photo not found.</p>
-		<a href={`/app${page.url.search}`}>Back to the gallery</a>
+		<p>{m.notFound}</p>
+		<a href={`/app${page.url.search}`}>{m.backToGallery}</a>
 	</div>
 {/if}
 
@@ -72,14 +81,16 @@
 		position: fixed;
 		inset: 0;
 		z-index: 100;
-		background: rgb(0 0 0 / 0.92);
-		color: white;
 		display: grid;
 		place-content: center;
 		gap: 0.5rem;
+		background: var(--bg);
 		text-align: center;
 	}
+	.missing p {
+		margin: 0;
+	}
 	.missing a {
-		color: white;
+		color: var(--accent);
 	}
 </style>

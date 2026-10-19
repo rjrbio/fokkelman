@@ -67,7 +67,7 @@
 		text-transform: uppercase;
 		letter-spacing: 0.12em;
 		font-size: 0.8rem;
-		color: var(--text-dim);
+		color: var(--dim);
 	}
 	h1 {
 		font-size: clamp(2.2rem, 6vw, 3.5rem);
@@ -76,7 +76,7 @@
 	.lede {
 		max-width: 620px;
 		margin: 0 auto 2rem;
-		color: var(--text-dim);
+		color: var(--dim);
 		font-size: 1.15rem;
 		line-height: 1.6;
 	}
@@ -94,14 +94,14 @@
 	}
 	.primary {
 		background: var(--accent);
-		color: white;
+		color: var(--on-accent);
 	}
 	.secondary {
-		border: 1px solid var(--text-dim);
-		color: var(--text);
+		border: 1px solid var(--dim);
+		color: var(--fg);
 	}
 	.tertiary {
-		color: var(--text-dim);
+		color: var(--dim);
 	}
 	.details {
 		display: grid;
@@ -113,11 +113,11 @@
 	}
 	article ul {
 		padding-left: 1.2rem;
-		color: var(--text-dim);
+		color: var(--dim);
 		line-height: 1.7;
 	}
 	article p {
-		color: var(--text-dim);
+		color: var(--dim);
 		line-height: 1.7;
 	}
 </style>

@@ -2,15 +2,16 @@ import { createServer } from 'node:http';
 
 const PORT = 9966;
 
-// 80 fotos familiares (para probar el scroll infinito: primer lote = 60) + 3 de demo
+// 80 fotos familiares (para probar el scroll infinito por filas) + 3 de demo. Una de cada cinco
+// es vertical, para que las filas justificadas no sean todas iguales.
 function createState() {
 	return {
 		family: Array.from({ length: 80 }, (_, i) => ({
 			public_id: `Sample_${String(i + 1).padStart(3, '0')}`,
 			folder: '',
 			format: 'jpg',
-			width: 800,
-			height: 600,
+			width: i % 5 === 3 ? 600 : 800,
+			height: i % 5 === 3 ? 800 : 600,
 			tags: []
 		})),
 		demo: Array.from({ length: 3 }, (_, i) => ({

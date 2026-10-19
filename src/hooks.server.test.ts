@@ -136,3 +136,28 @@ describe('handle: percent-encoded paths cannot dodge the guard', () => {
 		expect(response.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
 	});
 });
+
+type ResolveOptions = { transformPageChunk: (input: { html: string; done: boolean }) => string };
+
+describe('handle: page language', () => {
+	async function langFor(path: string, token?: string): Promise<string> {
+		const { resolve, result } = run(path, token);
+		await result;
+		const [, options] = resolve.mock.calls[0] as unknown as [unknown, ResolveOptions];
+		return options.transformPageChunk({ html: '<html lang="%lang%">', done: true });
+	}
+
+	it('serves the family area in Spanish', async () => {
+		expect(await langFor('/app', createSessionToken(SECRET))).toBe('<html lang="es">');
+		expect(await langFor('/login')).toBe('<html lang="es">');
+	});
+
+	it('serves the public pages in English', async () => {
+		expect(await langFor('/demo')).toBe('<html lang="en">');
+		expect(await langFor('/')).toBe('<html lang="en">');
+	});
+
+	it('uses the decoded path, like the guard does', async () => {
+		expect(await langFor('/%61pp', createSessionToken(SECRET))).toBe('<html lang="es">');
+	});
+});
