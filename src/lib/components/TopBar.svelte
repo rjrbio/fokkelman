@@ -31,6 +31,8 @@
 	let searchOpen = $state(untrack(() => filters.query !== ''));
 	let optionsOpen = $state(false);
 
+	// An active search always shows its field: tapping the magnifier cannot hide what is filtering the grid.
+	const searchShown = $derived(searchOpen || filters.query !== '');
 	const filtering = $derived(Boolean(filters.folder || filters.query || filters.favoritesOnly));
 
 	$effect(() => () => clearTimeout(searchTimer));
@@ -63,7 +65,7 @@
 <header class="bar">
 	<a class="brand" href="/app">{es.brand}</a>
 
-	<div class="search" class:open={searchOpen}>
+	<div class="search" class:open={searchShown}>
 		<Icon name="search" size={18} />
 		<input
 			bind:this={searchInput}
@@ -103,7 +105,7 @@
 	<button
 		class="icon narrow-only"
 		aria-label={m.search}
-		aria-expanded={searchOpen}
+		aria-expanded={searchShown}
 		onclick={() => (searchOpen ? (searchOpen = false) : openSearch())}
 	>
 		<Icon name="search" />

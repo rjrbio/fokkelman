@@ -27,6 +27,53 @@ test('uploads a photo with a server-issued signature', async ({ page }) => {
 	await refresh;
 });
 
+test('keeps the focus inside the dialog when the button that had it is disabled by its own press', async ({
+	page
+}) => {
+	await stubCdnImages(page);
+	// Held until the test lets it go, so that the button stays disabled while the keys are pressed.
+	let finishUpload!: () => void;
+	const uploadMayFinish = new Promise<void>((resolve) => (finishUpload = resolve));
+	await page.route('https://api.cloudinary.com/v1_1/testcloud/image/upload', async (route) => {
+		await uploadMayFinish;
+		await route.fulfill({
+			contentType: 'application/json',
+			body: JSON.stringify({ public_id: 'family_uploads/e2e_focus', format: 'jpg' })
+		});
+	});
+	await login(page);
+	await page.waitForLoadState('networkidle'); // hydration
+
+	await page.getByRole('button', { name: 'Subir', exact: true }).click();
+	const dialog = page.getByRole('dialog', { name: 'Subir fotos' });
+	const focusIsInside = () => dialog.evaluate((d) => d.contains(document.activeElement));
+	await page.setInputFiles('input[type=file]', {
+		name: 'holiday.jpg',
+		mimeType: 'image/jpeg',
+		buffer: Buffer.from('fake-image-bytes')
+	});
+
+	// Pressing Enter on "Subir todo" disables it (and "Cerrar"), so the browser drops the focus on
+	// <body>. The next Tab must still land inside the dialog, not on the page behind it.
+	await dialog.getByRole('button', { name: 'Subir todo' }).focus();
+	await page.keyboard.press('Enter');
+	await expect(dialog.getByRole('button', { name: 'Subiendo…' })).toBeDisabled();
+	await expect(page.locator('body')).toBeFocused();
+	await page.keyboard.press('Tab');
+	expect(await focusIsInside()).toBe(true);
+
+	finishUpload();
+	await expect(dialog.getByText('Subida')).toBeVisible();
+
+	// The same going backwards: from the first control, losing the focus and pressing Shift+Tab
+	// must not reach the page behind either.
+	await dialog.locator('input[type=file]').focus();
+	await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+	await expect(page.locator('body')).toBeFocused();
+	await page.keyboard.press('Shift+Tab');
+	expect(await focusIsInside()).toBe(true);
+});
+
 test('ignores a file that is already in the queue instead of crashing', async ({ page }) => {
 	await stubCdnImages(page);
 	const errors: string[] = [];

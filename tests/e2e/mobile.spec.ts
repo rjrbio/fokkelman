@@ -118,6 +118,21 @@ test('the search folds away until asked for, from the bar or from the tabs', asy
 	await expect(search).toBeFocused();
 });
 
+test('an active search keeps its field on screen, even from a link and after tapping the magnifier', async ({
+	page
+}) => {
+	await page.goto('/app?q=Sample_07');
+	await page.waitForLoadState('networkidle'); // hydration
+	const search = page.getByRole('searchbox', { name: 'Buscar fotos' });
+	await expect(search).toBeVisible();
+	await expect(search).toHaveValue('Sample_07');
+
+	const magnifier = page.getByRole('button', { name: 'Buscar fotos' }); // the field has the same name
+	await magnifier.tap();
+	await expect(search).toBeVisible();
+	await expect(magnifier).toHaveAttribute('aria-expanded', 'true');
+});
+
 test('the favorites tab filters, and Fotos clears it', async ({ page }) => {
 	const favorites = tabs(page).getByRole('button', { name: 'Favoritas' });
 	await favorites.tap();

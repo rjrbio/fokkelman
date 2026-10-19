@@ -49,6 +49,20 @@ test('each area declares its own language', async ({ page }) => {
 	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 });
 
+test('the language follows client-side navigation, not only full page loads', async ({ page }) => {
+	await page.goto('/');
+	await page.waitForLoadState('networkidle'); // hydration
+	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+
+	await page.getByRole('link', { name: 'Family sign in' }).click(); // a client-routed link
+	await page.waitForURL('**/login');
+	await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+
+	await page.goBack();
+	await page.waitForURL((url) => url.pathname === '/');
+	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+});
+
 test('the brand link is big enough to tap', async ({ page }) => {
 	await page.goto('/demo');
 	await page.waitForLoadState('networkidle');
