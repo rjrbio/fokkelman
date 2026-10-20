@@ -48,7 +48,9 @@ export function parseContext(raw: unknown, currentYear: number = new Date().getF
 		if (key === 'caption') annotation.caption = cleanText(text);
 		else if (key === 'year') {
 			const year = /^\d{4}$/.test(text.trim()) ? Number(text.trim()) : Number.NaN;
-			annotation.year = year >= MIN_YEAR && year <= currentYear ? year : null;
+			if (year >= MIN_YEAR && year <= currentYear) annotation.year = year;
+			// "circa 1975" is not a year we can show, but somebody wrote it: it travels with the extras.
+			else if (text.trim() !== '') extra.year = text;
 		} else if (key === 'people') annotation.people = parsePeople(text);
 		else if (text !== '') extra[key] = text;
 	}

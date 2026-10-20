@@ -68,6 +68,38 @@ export async function setFavorite(
 	if (!res.ok) throw new Error(`Cloudinary tags API failed: ${res.status}`);
 }
 
+/**
+ * Changes the context of up to 100 photos with the Upload API. It can only `add` keys (replacing
+ * the ones that exist) or `remove_all` of them; there is no way to remove one key.
+ * `public_ids` goes as an array (`public_ids[]`) and is signed comma-joined, as Cloudinary's own SDKs do.
+ */
+export async function updateContext(
+	cfg: CloudinaryConfig,
+	command: 'add' | 'remove_all',
+	publicIds: string[],
+	context?: string
+): Promise<void> {
+	const timestamp = Math.floor(Date.now() / 1000);
+	const signed: Record<string, string | number> = {
+		command,
+		public_ids: publicIds.join(','),
+		timestamp,
+		...(context === undefined ? {} : { context })
+	};
+	const body = new URLSearchParams();
+	body.set('command', command);
+	for (const id of publicIds) body.append('public_ids[]', id);
+	if (context !== undefined) body.set('context', context);
+	body.set('timestamp', String(timestamp));
+	body.set('api_key', cfg.apiKey);
+	body.set('signature', signParams(signed, cfg.apiSecret));
+	const res = await cfg.fetchFn(`${cfg.apiBase}/v1_1/${cfg.cloudName}/image/context`, {
+		method: 'POST',
+		body
+	});
+	if (!res.ok) throw new Error(`Cloudinary context API failed: ${res.status}`);
+}
+
 interface SearchResource {
 	public_id: string;
 	folder?: string;

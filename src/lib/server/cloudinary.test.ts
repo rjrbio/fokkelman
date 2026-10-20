@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { noAnnotation } from '$lib/annotations';
 import {
 	createUploadSignature,
 	searchAllPhotos,
 	setFavorite,
 	signParams,
+	updateContext,
 	type CloudinaryConfig
 } from './cloudinary';
 
@@ -72,6 +73,48 @@ describe('setFavorite', () => {
 	});
 });
 
+describe('updateContext', () => {
+	const sha1 = (text: string) => createHash('sha1').update(text).digest('hex');
+
+	afterEach(() => vi.useRealTimers());
+
+	it('sends the photos as an array, the context as is, and signs the ids comma-joined', async () => {
+		vi.useFakeTimers().setSystemTime(1_700_000_000_000);
+		const fetchFn = vi.fn().mockResolvedValue(jsonResponse({}));
+
+		await updateContext(makeConfig(fetchFn as typeof fetch), 'add', ['a', 'b/c'], 'caption=Playa|year=1975');
+
+		expect(fetchFn.mock.calls[0][0]).toBe('https://api.example/v1_1/testcloud/image/context');
+		const body = fetchFn.mock.calls[0][1].body as URLSearchParams;
+		expect(body.getAll('public_ids[]')).toEqual(['a', 'b/c']);
+		expect(body.get('command')).toBe('add');
+		expect(body.get('context')).toBe('caption=Playa|year=1975');
+		expect(body.get('api_key')).toBe('key123');
+		expect(body.get('timestamp')).toBe('1700000000');
+		expect(body.get('signature')).toBe(
+			sha1('command=add&context=caption=Playa|year=1975&public_ids=a,b/c&timestamp=1700000000secret123')
+		);
+	});
+
+	it('sends no context to remove them all', async () => {
+		vi.useFakeTimers().setSystemTime(1_700_000_000_000);
+		const fetchFn = vi.fn().mockResolvedValue(jsonResponse({}));
+
+		await updateContext(makeConfig(fetchFn as typeof fetch), 'remove_all', ['a']);
+
+		const body = fetchFn.mock.calls[0][1].body as URLSearchParams;
+		expect(body.has('context')).toBe(false);
+		expect(body.get('signature')).toBe(sha1('command=remove_all&public_ids=a&timestamp=1700000000secret123'));
+	});
+
+	it('throws on HTTP error', async () => {
+		const fetchFn = vi.fn().mockResolvedValue(jsonResponse({}, 400));
+		await expect(updateContext(makeConfig(fetchFn as typeof fetch), 'add', ['a'], 'x=y')).rejects.toThrow(
+			'Cloudinary context API failed: 400'
+		);
+	});
+});
+
 describe('searchAllPhotos', () => {
 	it('paginates with next_cursor and maps resources to Photo', async () => {
 		const fetchFn = vi
@@ -122,10 +165,11 @@ describe('searchAllPhotos', () => {
 
 		expect(JSON.parse(fetchFn.mock.calls[0][1].body as string).with_field).toEqual(['tags', 'context']);
 		expect(photos[0]).toMatchObject({ caption: 'Playa', year: 1975, people: ['Ana', 'Luis'], extraContext: { alt: 'texto' } });
+		// A year nobody can read is not shown, but it is not lost either.
 		expect(photos[1]).toEqual({
-			publicId: 'a2', folder: '', format: 'jpg', width: 10, height: 20, favorite: false, ...noAnnotation()
+			publicId: 'a2', folder: '', format: 'jpg', width: 10, height: 20, favorite: false, ...noAnnotation(),
+			extraContext: { year: 'circa 1975' }
 		});
-		expect(photos[1]).not.toHaveProperty('extraContext');
 	});
 
 	it('throws on HTTP error', async () => {

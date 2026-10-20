@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 
 const PORT = 9966;
@@ -39,6 +40,48 @@ function createState() {
 }
 
 let state = createState();
+
+// Lo que la API real firma: todos los parámetros menos `file`, `api_key`, `resource_type` y la propia
+// firma, ordenados, con las listas (`public_ids[]`) unidas por comas. Si la app firma mal, el test falla.
+const API_SECRET = 'test-secret';
+function signatureIsValid(params) {
+	const signed = {};
+	for (const [key, value] of params.entries()) {
+		if (['file', 'api_key', 'resource_type', 'signature'].includes(key)) continue;
+		const name = key.replace(/\[\]$/, '');
+		signed[name] = name === key ? value : [...(signed[name] ? [signed[name]] : []), value].join(',');
+	}
+	const toSign = Object.keys(signed).sort().map((key) => `${key}=${signed[key]}`).join('&');
+	return createHash('sha1').update(toSign + API_SECRET).digest('hex') === params.get('signature');
+}
+
+// `key=value|key=value`, con `\=` y `\|` dentro de los valores.
+function parseContextString(text) {
+	const entries = {};
+	let key = '';
+	let value = '';
+	let inValue = false;
+	let escaped = false;
+	const flush = () => {
+		if (key !== '' || value !== '') entries[key] = value;
+		key = '';
+		value = '';
+		inValue = false;
+	};
+	for (const char of text) {
+		if (escaped) {
+			if (inValue) value += char;
+			else key += char;
+			escaped = false;
+		} else if (char === '\\') escaped = true;
+		else if (char === '|') flush();
+		else if (char === '=' && !inValue) inValue = true;
+		else if (inValue) value += char;
+		else key += char;
+	}
+	flush();
+	return entries;
+}
 
 function readBody(req) {
 	return new Promise((resolve) => {
@@ -89,6 +132,33 @@ const server = createServer(async (req, res) => {
 			if (command === 'remove') photo.tags = photo.tags.filter((t) => t !== tag);
 		}
 		res.end(JSON.stringify({}));
+		return;
+	}
+
+	if (req.url?.endsWith('/image/context')) {
+		const params = new URLSearchParams(body);
+		const fail = (message) => {
+			res.statusCode = 400;
+			res.end(JSON.stringify({ error: { message } }));
+		};
+		if (!signatureIsValid(params)) return fail('Invalid Signature');
+		const command = params.get('command');
+		if (command !== 'add' && command !== 'remove_all') return fail(`Invalid command ${command}`);
+		const ids = params.getAll('public_ids[]');
+		if (ids.length === 0 || ids.length > 100) return fail('public_ids must have between 1 and 100 items');
+		const entries = command === 'add' ? parseContextString(params.get('context') ?? '') : {};
+		if (command === 'add' && Object.keys(entries).length === 0) return fail('context is required');
+		for (const [key, value] of Object.entries(entries)) {
+			if (key === '' || value === '') return fail('context keys and values cannot be empty');
+			if (value.length > 255) return fail('context value is too long');
+		}
+		const updated = [];
+		for (const photo of [...state.family, ...state.demo]) {
+			if (!ids.includes(photo.public_id)) continue;
+			photo.context = command === 'add' ? { ...(photo.context ?? {}), ...entries } : {};
+			updated.push(photo.public_id);
+		}
+		res.end(JSON.stringify({ public_ids: updated }));
 		return;
 	}
 

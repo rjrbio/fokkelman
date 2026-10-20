@@ -74,6 +74,15 @@ describe('parseContext', () => {
 		expect(extra).toEqual({ alt: 'texto alternativo', source: 'álbum 3' });
 	});
 
+	it('keeps a year that is not a year in the extras, so that rewriting the context does not lose it', () => {
+		expect(parseContext({ year: 'circa 1975', caption: 'x' }, NOW)).toEqual({
+			annotation: { caption: 'x', year: null, people: [] },
+			extra: { year: 'circa 1975' }
+		});
+		expect(parseContext({ year: '' }, NOW).extra).toEqual({});
+		expect(parseContext({ year: '2027' }, NOW).extra).toEqual({ year: '2027' });
+	});
+
 	it('uses the clock for this year when it is not given', () => {
 		const next = String(new Date().getFullYear() + 1);
 		expect(parseContext({ year: next }).annotation.year).toBeNull();
