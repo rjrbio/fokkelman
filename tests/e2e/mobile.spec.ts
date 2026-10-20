@@ -2,7 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import {
 	expectNoA11yViolations,
 	login,
+	resetBackend,
 	starButton,
+	storedContext,
 	stubCdnImages,
 	touchGesture,
 	viewerDialog
@@ -214,6 +216,52 @@ test.describe('viewer', () => {
 		await expect(page.getByTestId('zoomable')).toHaveAttribute('data-scale', '1.00');
 		await touchGesture(page, [[{ x: cx + 100, y: cy }], [{ x: cx, y: cy }], [{ x: cx - 100, y: cy }], []]);
 		await expect(page).toHaveURL(/\/app\/photo\/Sample_002$/);
+	});
+});
+
+test.describe('annotating on a phone', () => {
+	test.beforeEach(async ({ page }) => {
+		await resetBackend(page);
+		await page.reload();
+		await page.waitForLoadState('networkidle');
+		await page.getByRole('button', { name: /^Abrir Sample_002/ }).tap();
+		await viewerDialog(page).getByRole('button', { name: 'Editar', exact: true }).tap();
+	});
+
+	test('edits and saves with taps', async ({ page }) => {
+		const viewer = viewerDialog(page);
+		await viewer.getByLabel('Descripción').fill('Con el móvil');
+		await viewer.getByLabel('Año').fill('1999');
+		await viewer.getByRole('button', { name: 'Guardar' }).tap();
+
+		await expect(viewer.getByText('Con el móvil')).toBeVisible();
+		await expect(viewer.getByRole('button', { name: 'Editar', exact: true })).toBeVisible();
+		expect(await storedContext('Sample_002')).toEqual({ caption: 'Con el móvil', year: '1999', people: 'Ana, Luis' });
+	});
+
+	test('the controls of the editor are big enough for a finger', async ({ page }) => {
+		const form = viewerDialog(page).locator('form');
+		const small = await form.evaluate((node) =>
+			[...node.querySelectorAll<HTMLElement>('button, input, textarea')]
+				.filter((el) => el.getClientRects().length > 0)
+				.map((el) => ({
+					name: el.getAttribute('aria-label') ?? el.id ?? el.textContent?.trim() ?? '',
+					remove: el.classList.contains('remove'),
+					box: el.getBoundingClientRect()
+				}))
+				// The little × on a name is smaller on purpose; it still has to be 24px (WCAG 2.2).
+				.filter(({ remove, box }) => (remove ? box.width < 24 || box.height < 24 : box.height < 44))
+				.map(({ name, box }) => `${name}: ${Math.round(box.width)}×${Math.round(box.height)}`)
+		);
+		expect(small).toEqual([]);
+	});
+
+	test('has nothing wrong for a screen reader, with an error showing', async ({ page }) => {
+		const viewer = viewerDialog(page);
+		await viewer.getByLabel('Año').fill('abc');
+		await viewer.getByRole('button', { name: 'Guardar' }).tap();
+		await expect(viewer.getByRole('alert')).toBeVisible();
+		await expectNoA11yViolations(page);
 	});
 });
 

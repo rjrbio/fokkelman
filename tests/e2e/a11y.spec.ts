@@ -36,6 +36,21 @@ test('the viewer', async ({ page }) => {
 	await expectNoA11yViolations(page);
 });
 
+test('the viewer with the editor open, and again with an error showing', async ({ page }) => {
+	await login(page);
+	await hydrated(page);
+	await page.getByRole('button', { name: /^Abrir Sample_002/ }).click();
+	const viewer = page.getByRole('dialog', { name: 'Visor de fotos' });
+	await viewer.getByRole('button', { name: 'Editar', exact: true }).click();
+	await viewer.getByLabel('Descripción').waitFor();
+	await expectNoA11yViolations(page);
+
+	await viewer.getByLabel('Año').fill('abc');
+	await viewer.getByRole('button', { name: 'Guardar' }).click();
+	await viewer.getByRole('alert').waitFor();
+	await expectNoA11yViolations(page);
+});
+
 test('the upload dialog, with a queued file', async ({ page }) => {
 	await login(page);
 	await hydrated(page);

@@ -94,6 +94,20 @@ de la paleta los fija `src/lib/tokens.test.ts`.
   panel), zoom con rueda, pellizco o teclas `+` `-` `0`, y precarga de las
   fotos vecinas. La versión de 2400 px solo se pide al ampliar o en pantalla
   completa; el original, solo en *Descargar*.
+- Datos de cada foto: descripción, año y personas se guardan en el `context`
+  de Cloudinary (claves `caption`, `year` y `people`; las personas, separadas
+  por comas), sin base de datos aparte. Las reglas (límites, limpieza, mezcla de
+  personas) están en `src/lib/annotations.ts`, que comparten navegador y servidor;
+  `src/lib/server/context.ts` lee y escribe el formato del `context`, y
+  `src/lib/server/annotate.ts` decide qué llamadas hacen falta. `POST /api/annotate`
+  acepta `{ publicIds, patch }` (hasta 200 fotos por petición), escribe solo las
+  claves que cambian y deja intactas las que no son de la app. Cloudinary no puede
+  borrar una sola clave: al vaciar un campo se vacía el `context` de la foto y se
+  escribe de nuevo entero (si lo segundo falla, se devuelve el anterior). En el
+  navegador el cambio se ve al momento y se deshace con un aviso si falla
+  (`src/lib/annotate.svelte.ts`). La galería se ordena por año (sin año al final)
+  y el buscador mira descripción, personas, año y nombre de archivo, sin
+  distinguir mayúsculas ni acentos.
 - Idioma: la zona familiar (`/app`, `/login`) está en español y la landing y la
   demo en inglés. Los textos de la interfaz (familia, error, rejilla, visor,
   demo) están en `src/lib/messages.ts`; la landing tiene su texto en la propia
