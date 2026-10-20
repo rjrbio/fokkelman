@@ -220,17 +220,109 @@ describe('annotatePhotos', () => {
 			expect(cloudinary.searchAllPhotos).toHaveBeenCalledTimes(2);
 		});
 
-		it('treats a photo with no context as a photo with nothing: a clear changes nothing and an add writes only what is new', async () => {
-			await getFamilyIndex(); // the copy says 'b' has a caption and a year
-			cloudinary.getContexts.mockResolvedValue(answers({ b: undefined }));
+		it('treats a photo with no context, which the index also has empty, as a photo with nothing', async () => {
+			await getFamilyIndex();
+			cloudinary.getContexts.mockResolvedValue(answers({ a: undefined }));
 
-			const cleared = await annotatePhotos(['b'], { caption: '' });
-			expect(cleared).toEqual({ status: 'done', updated: [{ publicId: 'b', annotation: noAnnotation() }], failed: [] });
+			const cleared = await annotatePhotos(['a'], { caption: '' });
+			expect(cleared).toEqual({ status: 'done', updated: [{ publicId: 'a', annotation: noAnnotation() }], failed: [] });
 			expect(cloudinary.updateContext).not.toHaveBeenCalled();
 
-			const added = await annotatePhotos(['b'], { addPeople: ['Ana'] });
-			expect(writes()).toEqual([['add', ['b'], 'people=Ana']]);
-			expect(added).toMatchObject({ updated: [{ publicId: 'b', annotation: { caption: '', year: null, people: ['Ana'] } }] });
+			const added = await annotatePhotos(['a'], { addPeople: ['Ana'] });
+			expect(writes()).toEqual([['add', ['a'], 'people=Ana']]);
+			expect(added).toEqual({
+				status: 'done',
+				updated: [{ publicId: 'a', annotation: { caption: '', year: null, people: ['Ana'] } }],
+				failed: []
+			});
+		});
+
+		describe('a read that comes back completely empty for a photo the index has data for', () => {
+			// Nothing in Cloudinary says that this is wrong, but it is just what a read that leaves the context out
+			// looks like, and writing from it would overwrite what is really there (an add replaces the whole `people`).
+			const cases: [string, Partial<Photo>][] = [
+				['a caption', { caption: 'Playa' }],
+				['a year', { year: 1975 }],
+				['people', { people: ['Ana'] }],
+				['keys that are not ours', { extraContext: { alt: 'x' } }]
+			];
+			const emptyForms: [string, unknown][] = [
+				['no context key', undefined],
+				['an empty context', {}],
+				['an empty custom context', { custom: {} }]
+			];
+
+			it.each(cases)('is not trusted when the index has %s: nothing is written, it fails and the index is reloaded', async (_name, fields) => {
+				library = [photo('a', fields)];
+				await getFamilyIndex();
+				cloudinary.getContexts.mockResolvedValue(answers({ a: undefined }));
+
+				const outcome = await annotatePhotos(['a'], { addPeople: ['Luis'] });
+
+				expect(outcome).toEqual({ status: 'done', updated: [], failed: ['a'] });
+				expect(cloudinary.updateContext).not.toHaveBeenCalled();
+				expect(errorLog).toHaveBeenCalledTimes(1);
+				expect(String(errorLog.mock.calls[0][0])).toContain('[annotate]');
+				expect(String(errorLog.mock.calls[0][0])).toContain('a came back empty while the index has data for it');
+				// The index is thrown away, so the next read of it is the truth.
+				await annotationOf('a');
+				expect(cloudinary.searchAllPhotos).toHaveBeenCalledTimes(2);
+			});
+
+			it.each(emptyForms)('is the same whatever the empty answer looks like (%s)', async (_name, raw) => {
+				library = [photo('a', { people: ['Ana'] })];
+				await getFamilyIndex();
+				cloudinary.getContexts.mockResolvedValue(answers({ a: raw }));
+
+				expect(await annotatePhotos(['a'], { caption: '' })).toEqual({ status: 'done', updated: [], failed: ['a'] });
+				expect(cloudinary.updateContext).not.toHaveBeenCalled();
+			});
+
+			it('does not hold back the other photos of the request', async () => {
+				library = [photo('a', { people: ['Ana'] }), photo('b'), photo('c', { caption: 'Vieja' })];
+				await getFamilyIndex();
+				cloudinary.getContexts.mockResolvedValue(
+					answers({ a: undefined, b: undefined, c: { custom: { caption: 'Vieja' } } })
+				);
+
+				const outcome = await annotatePhotos(['a', 'b', 'c'], { addPeople: ['Luis'] });
+
+				expect(writes()).toEqual([['add', ['b', 'c'], 'people=Luis']]);
+				expect(outcome).toEqual({
+					status: 'done',
+					updated: [
+						{ publicId: 'b', annotation: { caption: '', year: null, people: ['Luis'] } },
+						{ publicId: 'c', annotation: { caption: 'Vieja', year: null, people: ['Luis'] } }
+					],
+					failed: ['a']
+				});
+				// The request had a failure, so the index is reloaded: the whole truth comes from there.
+				await annotationOf('b');
+				expect(cloudinary.searchAllPhotos).toHaveBeenCalledTimes(2);
+			});
+
+			it('does not matter when the index is empty too: the photo is written as usual', async () => {
+				library = [photo('a')];
+				await getFamilyIndex();
+				cloudinary.getContexts.mockResolvedValue(answers({ a: { custom: {} } }));
+
+				const outcome = await annotatePhotos(['a'], { addPeople: ['Luis'] });
+
+				expect(writes()).toEqual([['add', ['a'], 'people=Luis']]);
+				expect(outcome).toMatchObject({ failed: [] });
+				expect(errorLog).not.toHaveBeenCalled();
+			});
+
+			it('does not matter when the read has data: only an empty read is doubted', async () => {
+				library = [photo('a', { people: ['Ana'] })];
+				await getFamilyIndex();
+				cloudinary.getContexts.mockResolvedValue(answers({ a: { custom: { alt: 'x' } } }));
+
+				const outcome = await annotatePhotos(['a'], { addPeople: ['Luis'] });
+
+				expect(writes()).toEqual([['add', ['a'], 'people=Luis']]);
+				expect(outcome).toMatchObject({ failed: [] });
+			});
 		});
 
 		it('corrects the cached copy of a photo it finds already as asked, and answers with what it has', async () => {
@@ -267,17 +359,17 @@ describe('annotatePhotos', () => {
 			expect(cloudinary.searchAllPhotos).toHaveBeenCalledTimes(2);
 		});
 
-		it('lists the failures in this order: the writes that failed, the photos not found, the photos not written', async () => {
-			library = [photo('a'), photo('b'), photo('c'), photo('d')];
+		it('lists the failures in this order: the writes that failed, the photos not found, the empty reads, the photos not written', async () => {
+			library = [photo('a'), photo('b'), photo('c'), photo('d'), photo('e', { year: 1975 })];
 			await getFamilyIndex();
 			cloudinary.getContexts.mockResolvedValue(
-				answers({ a: undefined, b: { custom: { people: 'x\\y' } }, c: undefined })
+				answers({ a: undefined, b: { custom: { people: 'x\\y' } }, c: undefined, e: undefined })
 			);
 			cloudinary.updateContext.mockRejectedValue(new Error('boom'));
 
-			const outcome = await annotatePhotos(['a', 'b', 'c', 'd'], { addPeople: ['Ana'] });
+			const outcome = await annotatePhotos(['a', 'b', 'c', 'd', 'e'], { addPeople: ['Ana'] });
 
-			expect(outcome).toMatchObject({ updated: [], failed: ['a', 'c', 'd', 'b'] });
+			expect(outcome).toMatchObject({ updated: [], failed: ['a', 'c', 'd', 'e', 'b'] });
 		});
 	});
 });

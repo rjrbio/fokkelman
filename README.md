@@ -114,10 +114,13 @@ de la paleta los fija `src/lib/tokens.test.ts`.
   Cloudinary tiene un tiempo máximo de 3 s, y una petición no empieza más grupos
   de escritura pasados 6 s. Las fotos cuyo texto ya escrito lleva una barra
   invertida (`\`) no se reescriben (Cloudinary no documenta cómo se guarda) y se
-  avisan como fallidas. En el navegador el cambio se ve al momento y se deshace
-  con un aviso si falla (`src/lib/annotate.svelte.ts`). La galería se ordena por
-  año (sin año al final) y el buscador mira descripción, personas, año y nombre
-  de archivo, sin distinguir mayúsculas ni acentos.
+  avisan como fallidas; tampoco se escribe una foto cuyo `context` actual llega
+  completamente vacío mientras el índice sí tiene datos de ella (podría ser una
+  lectura que omite el `context`, y escribir encima borraría lo que hay): se
+  avisa como fallida y se recarga el índice. En el navegador el cambio se ve al
+  momento y se deshace con un aviso si falla (`src/lib/annotate.svelte.ts`). La
+  galería se ordena por año (sin año al final) y el buscador mira descripción,
+  personas, año y nombre de archivo, sin distinguir mayúsculas ni acentos.
 - Idioma: la zona familiar (`/app`, `/login`) está en español y la landing y la
   demo en inglés. Los textos de la interfaz (familia, error, rejilla, visor,
   demo) están en `src/lib/messages.ts`; la landing tiene su texto en la propia

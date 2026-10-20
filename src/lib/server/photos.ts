@@ -45,6 +45,13 @@ export async function markFavorite(
 	return 'ok';
 }
 
+/** No caption, no year, no people and no other keys: what a photo without context looks like. */
+const hasNoData = (photo: Photo): boolean =>
+	photo.caption === '' &&
+	photo.year === null &&
+	photo.people.length === 0 &&
+	Object.keys(photo.extraContext ?? {}).length === 0;
+
 export type AnnotateOutcome =
 	| { status: 'unknown-photo' }
 	| { status: 'rejected'; problem: 'too-many-people' | 'too-many-calls' }
@@ -55,8 +62,9 @@ export type AnnotateOutcome =
 			/** The photos that were written or that already were as asked, with the annotation they have now. */
 			updated: { publicId: string; annotation: Annotation }[];
 			/**
-			 * The photos that were not written: Cloudinary failed, did not return them, or their text has a
-			 * backslash. The family index is reloaded the next time it is read.
+			 * The photos that were not written: Cloudinary failed, did not return them, returned nothing for a photo
+			 * the index has data for, or their text has a backslash. The family index is reloaded the next time it
+			 * is read.
 			 */
 			failed: string[];
 	  };
@@ -93,10 +101,24 @@ export async function annotatePhotos(
 	}
 
 	const missing: string[] = [];
+	const doubted: string[] = [];
 	const fresh: Photo[] = [];
 	for (const photo of targets) {
-		if (current.has(photo.publicId)) fresh.push(withContext(photo, current.get(photo.publicId)));
-		else missing.push(photo.publicId);
+		if (!current.has(photo.publicId)) {
+			missing.push(photo.publicId);
+			continue;
+		}
+		const now = withContext(photo, current.get(photo.publicId));
+		// A read with nothing at all in it is what a read that leaves the context out looks like, and writing from
+		// it would overwrite what is really there. It is only believed when the index has nothing for the photo either.
+		if (hasNoData(now) && !hasNoData(photo)) {
+			console.error(
+				`[annotate] the current context of ${photo.publicId} came back empty while the index has data for it, nothing was written`
+			);
+			doubted.push(photo.publicId);
+			continue;
+		}
+		fresh.push(now);
 	}
 
 	const plan = planAnnotation(fresh, patch);
@@ -113,7 +135,7 @@ export async function annotatePhotos(
 			return unchanged.has(photo.publicId) ? withContext(photo, current.get(photo.publicId)) : photo;
 		})
 	);
-	const failed = [...notWritten, ...missing, ...plan.blocked];
+	const failed = [...notWritten, ...missing, ...doubted, ...plan.blocked];
 	if (failed.length > 0) familyCache.invalidate();
 
 	const updated: { publicId: string; annotation: Annotation }[] = [];

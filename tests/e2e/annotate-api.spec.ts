@@ -140,6 +140,20 @@ test.describe('what was changed behind the back of the app', () => {
 		expect((await response.json()).failed).toEqual([]);
 	});
 
+	test('a photo whose current context comes back empty while the index has data for it is not written', async ({ page }) => {
+		// Sample_002 comes with a caption and two people. Loading the gallery makes the app take its copy of the index.
+		await page.goto('/app');
+		await editContextByHand('Sample_002', {});
+		expect(await storedContext('Sample_002')).toBeUndefined();
+
+		const response = await annotate(page, ['Sample_002'], { addPeople: ['Marta'] });
+
+		// Nothing is written over a read that may have left the context out: the notice says it did not work.
+		expect(response.status()).toBe(200);
+		expect(await response.json()).toEqual({ updated: [], failed: ['Sample_002'] });
+		expect(await storedContext('Sample_002')).toBeUndefined();
+	});
+
 	test('a text with a backslash is not rewritten: the photo is reported as failed and nothing changes', async ({ page }) => {
 		await annotate(page, ['Sample_004'], { year: 1982 });
 		await editContextByHand('Sample_004', { people: 'Ana, C:\\Rosa', year: '1982' });
