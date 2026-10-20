@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { noAnnotation } from '$lib/annotations';
 import type { Photo } from '$lib/types';
 
 const cloudinary = vi.hoisted(() => ({ updateContext: vi.fn() }));
 vi.mock('./cloudinary', () => cloudinary);
 
-import { CONTEXT_BATCH, MAX_CONTEXT_CALLS, planAnnotation, withChange, writeOperations } from './annotate';
+import { CONTEXT_BATCH, MAX_CONTEXT_CALLS, WRITE_BUDGET_MS, planAnnotation, withChange, writeOperations } from './annotate';
 
 const photo = (publicId: string, fields: Partial<Photo> = {}): Photo => ({
 	publicId,
@@ -20,9 +20,20 @@ const photo = (publicId: string, fields: Partial<Photo> = {}): Photo => ({
 
 const cfg = {} as never;
 
+// Writing logs what goes wrong so that it can be put right by hand. Here it is caught, so that the output of
+// the tests stays clean, and so that the tests can look at what was logged.
+let errorLog: MockInstance<typeof console.error>;
+
 beforeEach(() => {
 	cloudinary.updateContext.mockReset().mockResolvedValue(undefined);
+	errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
 });
+
+afterEach(() => {
+	errorLog.mockRestore();
+});
+
+const logged = (): string => errorLog.mock.calls.map((args) => args.map(String).join(' ')).join('\n');
 
 describe('planAnnotation', () => {
 	it('sets only the keys that change, in one group for the photos that get the same ones', () => {
@@ -94,6 +105,20 @@ describe('planAnnotation', () => {
 			changes: [{ after: { year: 1980 } }]
 		});
 		expect(plan.ok && plan.changes[0].extra).toEqual({ alt: 'x' });
+
+		// Later the year is cleared: what is written again has no year at all, the unreadable one is gone for good.
+		if (!plan.ok) return;
+		const withYear = withChange(a, plan.changes[0]);
+		expect(withYear).toMatchObject({ year: 1980, extraContext: { alt: 'x' } });
+		const cleared = planAnnotation([withYear], { year: null });
+		expect(cleared).toMatchObject({
+			ok: true,
+			operations: [
+				{ kind: 'replace', publicIds: ['a'], before: { alt: 'x', year: '1980' }, after: { alt: 'x' } }
+			],
+			changes: [{ after: { year: null }, extra: { alt: 'x' } }]
+		});
+		expect(JSON.stringify(cleared)).not.toContain('circa 1975');
 	});
 
 	it('refuses the whole patch when one photo would end up with too many people', () => {
@@ -127,6 +152,7 @@ describe('writeOperations', () => {
 		expect(cloudinary.updateContext).toHaveBeenCalledTimes(1);
 		expect(cloudinary.updateContext).toHaveBeenCalledWith(cfg, 'add', ['a', 'b'], 'caption=Playa');
 		expect(result).toEqual({ done: ['a', 'b'], failed: [] });
+		expect(errorLog).not.toHaveBeenCalled();
 	});
 
 	it('sends no more than 100 photos in a call', async () => {
@@ -160,6 +186,29 @@ describe('writeOperations', () => {
 			['add', 'caption=x|year=1975']
 		]);
 		expect(result).toEqual({ done: [], failed: ['a'] });
+		expect(errorLog).toHaveBeenCalledTimes(1);
+		expect(logged()).toContain('could not write the context of a');
+	});
+
+	it('logs the old context when it cannot even put it back, so that it can be restored by hand', async () => {
+		cloudinary.updateContext.mockImplementation(async (_cfg, command) => {
+			if (command === 'add') throw new Error('boom');
+		});
+		const result = await writeOperations(cfg, [
+			{ kind: 'replace', publicIds: ['photo-1', 'photo-2'], before: { caption: 'x', year: '1975' }, after: { year: '1975' } }
+		]);
+		expect(cloudinary.updateContext.mock.calls.map((call) => [call[1], call[3]])).toEqual([
+			['remove_all', undefined],
+			['add', 'year=1975'],
+			['add', 'caption=x|year=1975']
+		]);
+		expect(result).toEqual({ done: [], failed: ['photo-1', 'photo-2'] });
+		const restoreLog = errorLog.mock.calls.find(([message]) => String(message).includes('could not be put back'));
+		expect(String(restoreLog?.[0])).toContain('photo-1, photo-2');
+		expect(String(restoreLog?.[0])).toContain('caption=x|year=1975');
+		// The error of the restore and the one of the write itself are both in the log.
+		expect(restoreLog?.[1]).toEqual(new Error('boom'));
+		expect(logged()).toContain('could not write the context of photo-1, photo-2');
 	});
 
 	it('does not try to write anything if it could not even empty it', async () => {
@@ -167,6 +216,7 @@ describe('writeOperations', () => {
 		const result = await writeOperations(cfg, [{ kind: 'replace', publicIds: ['a'], before: { caption: 'x' }, after: { year: '1975' } }]);
 		expect(cloudinary.updateContext).toHaveBeenCalledTimes(1);
 		expect(result.failed).toEqual(['a']);
+		expect(errorLog).toHaveBeenCalledTimes(1);
 	});
 
 	it('goes on with the other groups when one fails, and says which photos failed', async () => {
@@ -175,6 +225,104 @@ describe('writeOperations', () => {
 		});
 		const result = await writeOperations(cfg, [op(['a']), op(['b']), op(['c'])]);
 		expect(result).toEqual({ done: ['a', 'c'], failed: ['b'] });
+		// The failure of a plain `add` is logged too.
+		expect(errorLog).toHaveBeenCalledTimes(1);
+		expect(logged()).toContain('could not write the context of b');
+	});
+
+	it('empties and writes again each batch of a replace on more than 100 photos', async () => {
+		const ids = Array.from({ length: CONTEXT_BATCH + 1 }, (_, i) => `p${i}`);
+		const result = await writeOperations(cfg, [
+			{ kind: 'replace', publicIds: ids, before: { caption: 'x', year: '1975' }, after: { year: '1975' } }
+		]);
+		expect(cloudinary.updateContext.mock.calls.map((call) => [call[1], call[2].length])).toEqual([
+			['remove_all', 100],
+			['add', 100],
+			['remove_all', 1],
+			['add', 1]
+		]);
+		expect(result).toEqual({ done: ids, failed: [] });
+	});
+
+	describe('time budget', () => {
+		// A clock that only moves when Cloudinary is called, `ms` for each call.
+		const clock = (ms: number) => {
+			let time = 0;
+			cloudinary.updateContext.mockImplementation(async () => {
+				time += ms;
+			});
+			return () => time;
+		};
+
+		it('is 6 seconds, to be well within the time a serverless function is given', () => {
+			expect(WRITE_BUDGET_MS).toBe(6000);
+		});
+
+		it('writes the groups that start inside the budget and gives up the others without calling Cloudinary', async () => {
+			const now = clock(4000);
+			const result = await writeOperations(cfg, [op(['a']), op(['b']), op(['c']), op(['d'])], 6000, now);
+			expect(cloudinary.updateContext.mock.calls.map((call) => call[2])).toEqual([['a'], ['b']]);
+			expect(result).toEqual({ done: ['a', 'b'], failed: ['c', 'd'] });
+			expect(errorLog).not.toHaveBeenCalled();
+		});
+
+		it('gives up the batches of a group that have not started either', async () => {
+			const now = clock(4000);
+			const ids = Array.from({ length: CONTEXT_BATCH * 3 }, (_, i) => `p${i}`);
+			const result = await writeOperations(cfg, [op(ids)], 6000, now);
+			expect(cloudinary.updateContext.mock.calls.map((call) => call[2].length)).toEqual([100, 100]);
+			expect(result.done).toEqual(ids.slice(0, 200));
+			expect(result.failed).toEqual(ids.slice(200));
+		});
+
+		it('does not give up halfway through a replace, even when the budget is spent between its calls', async () => {
+			const now = clock(7000);
+			const result = await writeOperations(
+				cfg,
+				[{ kind: 'replace', publicIds: ['a'], before: { caption: 'x', year: '1975' }, after: { year: '1975' } }, op(['b'])],
+				6000,
+				now
+			);
+			expect(cloudinary.updateContext.mock.calls.map((call) => [call[1], call[2]])).toEqual([
+				['remove_all', ['a']],
+				['add', ['a']]
+			]);
+			expect(result).toEqual({ done: ['a'], failed: ['b'] });
+		});
+
+		it('still puts the old context back when the budget is spent by the time the write fails', async () => {
+			let time = 0;
+			cloudinary.updateContext.mockImplementation(async (_cfg, command, _ids, context) => {
+				time += 7000;
+				if (command === 'add' && context === 'year=1975') throw new Error('boom');
+			});
+			const result = await writeOperations(
+				cfg,
+				[{ kind: 'replace', publicIds: ['a'], before: { caption: 'x', year: '1975' }, after: { year: '1975' } }],
+				6000,
+				() => time
+			);
+			expect(cloudinary.updateContext.mock.calls.map((call) => [call[1], call[3]])).toEqual([
+				['remove_all', undefined],
+				['add', 'year=1975'],
+				['add', 'caption=x|year=1975']
+			]);
+			expect(result).toEqual({ done: [], failed: ['a'] });
+		});
+
+		it('has a budget by default and reads the clock from Date.now', async () => {
+			vi.useFakeTimers();
+			try {
+				vi.setSystemTime(0);
+				cloudinary.updateContext.mockImplementation(async () => {
+					vi.setSystemTime(Date.now() + WRITE_BUDGET_MS);
+				});
+				const result = await writeOperations(cfg, [op(['a']), op(['b'])]);
+				expect(result).toEqual({ done: ['a'], failed: ['b'] });
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 });
 

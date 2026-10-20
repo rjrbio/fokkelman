@@ -10,6 +10,12 @@ export const CONTEXT_BATCH = 100;
  * photos (see below), so one request is not allowed to spend more than this many.
  */
 export const MAX_CONTEXT_CALLS = 60;
+/**
+ * A serverless function is killed when it takes too long (about 10 s on Netlify). Writing stops starting
+ * new groups of photos after this long, so that the function is not cut off between the two calls of a
+ * `replace`, which would leave the photos with an empty context.
+ */
+export const WRITE_BUDGET_MS = 6000;
 
 type Entries = Record<string, string>;
 
@@ -100,18 +106,34 @@ export function planAnnotation(photos: Photo[], patch: AnnotationPatch): Annotat
 export interface WriteResult {
 	/** Photos whose context now is what the plan said. */
 	done: string[];
-	/** Photos where something went wrong. Their context may or may not have changed: reload it. */
+	/**
+	 * Photos where something went wrong, or that were left alone because the time budget ran out. Their
+	 * context may or may not have changed: reload it.
+	 */
 	failed: string[];
 }
 
 /**
  * Carries the operations out one after another. A group that fails does not stop the others, and a
- * `replace` that fails after emptying the context writes the old context back before giving up.
+ * `replace` that fails after emptying the context writes the old context back before giving up (if that
+ * fails too, the old context is logged so that it can be put back by hand).
+ * Once `budgetMs` has gone by, the groups that have not started are reported as `failed` without calling
+ * Cloudinary. The budget is only checked between groups: one that has started always finishes its calls.
  */
-export async function writeOperations(cfg: CloudinaryConfig, operations: Operation[]): Promise<WriteResult> {
+export async function writeOperations(
+	cfg: CloudinaryConfig,
+	operations: Operation[],
+	budgetMs: number = WRITE_BUDGET_MS,
+	now: () => number = Date.now
+): Promise<WriteResult> {
 	const result: WriteResult = { done: [], failed: [] };
+	const started = now();
 	for (const op of operations) {
 		for (const ids of chunks(op.publicIds, CONTEXT_BATCH)) {
+			if (now() - started >= budgetMs) {
+				result.failed.push(...ids);
+				continue;
+			}
 			try {
 				if (op.kind === 'add') {
 					await updateContext(cfg, 'add', ids, serializeContext(op.entries));
@@ -121,13 +143,19 @@ export async function writeOperations(cfg: CloudinaryConfig, operations: Operati
 						try {
 							await updateContext(cfg, 'add', ids, serializeContext(op.after));
 						} catch (err) {
-							await updateContext(cfg, 'add', ids, serializeContext(op.before)).catch(() => undefined);
+							await updateContext(cfg, 'add', ids, serializeContext(op.before)).catch((restoreErr) => {
+								console.error(
+									`[annotate] the context of ${ids.join(', ')} is empty and the old one could not be put back, set it by hand: ${serializeContext(op.before)}`,
+									restoreErr
+								);
+							});
 							throw err;
 						}
 					}
 				}
 				result.done.push(...ids);
-			} catch {
+			} catch (err) {
+				console.error(`[annotate] could not write the context of ${ids.join(', ')}`, err);
 				result.failed.push(...ids);
 			}
 		}
