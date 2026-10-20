@@ -3,8 +3,9 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Lightbox from '$lib/components/Lightbox.svelte';
+	import { withAnnotationOverrides } from '$lib/annotate.svelte';
 	import { toggleFavorite, withFavoriteOverrides } from '$lib/favorites.svelte';
-	import { filterPhotos, filtersFromSearchParams } from '$lib/filterPhotos';
+	import { filterPhotos, filtersFromSearchParams, sortPhotos } from '$lib/filterPhotos';
 	import { es } from '$lib/messages';
 	import type { Photo } from '$lib/types';
 
@@ -12,20 +13,20 @@
 
 	const cloudName = $derived(page.data.cloudName as string);
 	// Who belongs to the list is decided from the server data plus the overrides as they stood
-	// when it was computed, and is NOT re-evaluated on every toggle (hence the `untrack`): with
+	// when it was computed, and is NOT re-evaluated on every change (hence the `untrack`): with
 	// the favorites filter on, un-starring the open photo must not make it vanish from under the
-	// viewer. (The server data alone would be wrong too: a photo starred earlier in this session
+	// viewer, and giving it a year must not move it to another place in the list while it is open.
+	// (The server data alone would be wrong too: a photo starred earlier in this session
 	// is not a favorite there yet, but the grid behind did offer it.) The live overrides are
-	// laid over that membership in `list`, which is what the star and the next/prev links show.
+	// laid over that membership and order in `list`, which is what the star, the details and the
+	// next/prev links show.
+	const withOverrides = (photos: Photo[]) => withAnnotationOverrides(withFavoriteOverrides(photos));
 	const base = $derived.by(() => {
 		const photos = page.data.photos as Photo[];
 		const filters = filtersFromSearchParams(page.url.searchParams);
-		return filterPhotos(
-			untrack(() => withFavoriteOverrides(photos)),
-			filters
-		);
+		return sortPhotos(filterPhotos(untrack(() => withOverrides(photos)), filters));
 	});
-	const list = $derived(withFavoriteOverrides(base));
+	const list = $derived(withOverrides(base));
 	const index = $derived(list.findIndex((p) => p.publicId === page.params.id));
 	const photo = $derived(index >= 0 ? list[index] : undefined);
 	const neighbours = $derived([list[index - 1], list[index + 1]].filter((p): p is Photo => Boolean(p)));

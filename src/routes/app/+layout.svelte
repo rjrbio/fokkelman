@@ -14,14 +14,14 @@
 		favoriteFailure,
 		withFavoriteOverrides
 	} from '$lib/favorites.svelte';
-	import { filterPhotos, filtersFromSearchParams, uniqueFolders } from '$lib/filterPhotos';
+	import { filterPhotos, filtersFromSearchParams, sortPhotos, uniqueFolders } from '$lib/filterPhotos';
 	import { es } from '$lib/messages';
 
 	let { data, children } = $props();
 
 	const photos = $derived(withAnnotationOverrides(withFavoriteOverrides(data.photos)));
 	const filters = $derived(filtersFromSearchParams(page.url.searchParams));
-	const filtered = $derived(filterPhotos(photos, filters));
+	const filtered = $derived(sortPhotos(filterPhotos(photos, filters)));
 
 	// Fresh server data supersedes whatever was pending locally.
 	$effect(() => {

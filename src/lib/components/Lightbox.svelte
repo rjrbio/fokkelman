@@ -133,7 +133,7 @@
 			src={fullUrl(cloudName, photo)}
 			placeholderSrc={thumbUrl(cloudName, photo)}
 			largeSrc={zoomUrl(cloudName, photo)}
-			alt={photo.publicId}
+			alt={photo.caption || photo.publicId}
 			{immersive}
 			{onSwipe}
 			{onTap}

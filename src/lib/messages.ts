@@ -32,7 +32,7 @@ export const es = {
 	},
 	grid: {
 		empty: 'Ninguna foto coincide con los filtros.',
-		open: (name: string) => `Abrir ${name}`
+		open: (name: string, details?: string) => (details ? `Abrir ${name}: ${details}` : `Abrir ${name}`)
 	},
 	viewer: {
 		label: 'Visor de fotos',
@@ -55,7 +55,7 @@ export const es = {
 	},
 	topbar: {
 		search: 'Buscar fotos',
-		searchPlaceholder: 'Buscar por nombre de archivo…',
+		searchPlaceholder: 'Buscar por descripción, persona o año…',
 		collection: 'Colección',
 		allCollections: 'Todas las colecciones',
 		favorites: 'Favoritas',
@@ -129,7 +129,7 @@ export const en: SharedMessages & { demo: DemoMessages } = {
 	},
 	grid: {
 		empty: 'No photos match your filters.',
-		open: (name) => `Open ${name}`
+		open: (name, details) => (details ? `Open ${name}: ${details}` : `Open ${name}`)
 	},
 	viewer: {
 		label: 'Photo viewer',
