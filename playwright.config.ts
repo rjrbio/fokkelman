@@ -12,6 +12,9 @@ const appEnv = {
 
 export default defineConfig({
 	testDir: 'tests/e2e',
+	// Every test talks to the same Cloudinary mock and the same dev server (and its cached index), and
+	// many reset or change what they share: in parallel they would trample one another's data.
+	workers: 1,
 	use: { baseURL: 'http://localhost:5199' },
 	projects: [
 		{ name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /mobile\.spec\.ts/ },

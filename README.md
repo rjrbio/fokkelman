@@ -73,9 +73,10 @@ de la paleta los fija `src/lib/tokens.test.ts`.
 - El índice de fotos se consulta a la Search API de Cloudinary y se cachea
   5 minutos en memoria, por instancia serverless (cada instancia tiene su
   propia copia); si la API falla, se sirve la copia caducada. Marcar una
-  favorita parchea la copia en caché en lugar de volver a consultar el índice
-  (solo la de la instancia que atendió la escritura), y solo se aceptan fotos
-  que estén en el índice familiar.
+  favorita o guardar los datos de una foto parchean la copia en caché en lugar
+  de volver a consultar el índice (solo la de la instancia que atendió la
+  escritura), y en ambos casos solo se aceptan fotos que estén en el índice
+  familiar.
 - Login: contraseña familiar hasheada con scrypt en una variable de entorno,
   límite de intentos por IP de cliente y sesión en cookie HttpOnly firmada con
   HMAC (30 días). El límite de intentos vive en memoria, por instancia
@@ -94,6 +95,32 @@ de la paleta los fija `src/lib/tokens.test.ts`.
   panel), zoom con rueda, pellizco o teclas `+` `-` `0`, y precarga de las
   fotos vecinas. La versión de 2400 px solo se pide al ampliar o en pantalla
   completa; el original, solo en *Descargar*.
+- Datos de cada foto: descripción, año y personas se guardan en el `context`
+  de Cloudinary (claves `caption`, `year` y `people`; las personas, separadas
+  por comas), sin base de datos aparte. Las reglas (límites, limpieza, mezcla de
+  personas) están en `src/lib/annotations.ts`, que comparten navegador y servidor;
+  `src/lib/server/context.ts` lee y escribe el formato del `context`, y
+  `src/lib/server/annotate.ts` decide qué llamadas hacen falta. `POST /api/annotate`
+  acepta `{ publicIds, patch }` (hasta 200 fotos por petición), escribe solo las
+  claves que cambian y deja intactas las que no son de la app. Antes de escribir
+  lee el `context` **actual** de esas fotos con la Admin API de Cloudinary (no el
+  de la caché, que puede tener hasta 5 minutos o no saber de una edición hecha a
+  mano en la Media Library) y planifica a partir de él; si no puede leerlo,
+  contesta 503 y no escribe nada. Guardar cuesta una lectura y una llamada de
+  escritura (`add`). Cloudinary no puede borrar una sola clave: al vaciar un
+  campo se vacía el `context` de la foto y se escribe de nuevo entero, es decir,
+  una lectura, `remove_all` y `add`; si algo falla después de enviar `remove_all`,
+  se anota en el log qué contenía y se intenta devolverlo. Cada llamada a
+  Cloudinary tiene un tiempo máximo de 3 s, y una petición no empieza más grupos
+  de escritura pasados 6 s. Las fotos cuyo texto ya escrito lleva una barra
+  invertida (`\`) no se reescriben (Cloudinary no documenta cómo se guarda) y se
+  avisan como fallidas; tampoco se escribe una foto cuyo `context` actual llega
+  completamente vacío mientras el índice sí tiene datos de ella (podría ser una
+  lectura que omite el `context`, y escribir encima borraría lo que hay): se
+  avisa como fallida y se recarga el índice. En el navegador el cambio se ve al
+  momento y se deshace con un aviso si falla (`src/lib/annotate.svelte.ts`). La
+  galería se ordena por año (sin año al final) y el buscador mira descripción,
+  personas, año y nombre de archivo, sin distinguir mayúsculas ni acentos.
 - Idioma: la zona familiar (`/app`, `/login`) está en español y la landing y la
   demo en inglés. Los textos de la interfaz (familia, error, rejilla, visor,
   demo) están en `src/lib/messages.ts`; la landing tiene su texto en la propia

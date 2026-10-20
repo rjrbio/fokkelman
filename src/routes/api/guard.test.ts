@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
 	cloudinaryConfig: vi.fn(),
 	getFamilyIndex: vi.fn(),
 	markFavorite: vi.fn(),
+	annotatePhotos: vi.fn(),
 	invalidateFamilyIndex: vi.fn(),
 	resolveUploadFolder: vi.fn()
 }));
@@ -17,15 +18,17 @@ vi.mock('$lib/server/photos', () => ({
 	cloudinaryConfig: mocks.cloudinaryConfig,
 	getFamilyIndex: mocks.getFamilyIndex,
 	markFavorite: mocks.markFavorite,
+	annotatePhotos: mocks.annotatePhotos,
 	invalidateFamilyIndex: mocks.invalidateFamilyIndex,
 	resolveUploadFolder: mocks.resolveUploadFolder
 }));
 
+import { POST as annotate } from './annotate/+server';
 import { POST as favorite } from './favorite/+server';
 import { POST as refreshIndex } from './refresh-index/+server';
 import { POST as uploadSignature } from './upload-signature/+server';
 
-const handlers = { favorite, 'refresh-index': refreshIndex, 'upload-signature': uploadSignature };
+const handlers = { annotate, favorite, 'refresh-index': refreshIndex, 'upload-signature': uploadSignature };
 
 function makeEvent(authed: boolean) {
 	const json = vi.fn(async () => ({ publicId: 'x', favorite: true, folder: '' }));

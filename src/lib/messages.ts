@@ -32,7 +32,7 @@ export const es = {
 	},
 	grid: {
 		empty: 'Ninguna foto coincide con los filtros.',
-		open: (name: string) => `Abrir ${name}`
+		open: (name: string, details?: string) => (details ? `Abrir ${name}: ${details}` : `Abrir ${name}`)
 	},
 	viewer: {
 		label: 'Visor de fotos',
@@ -55,7 +55,7 @@ export const es = {
 	},
 	topbar: {
 		search: 'Buscar fotos',
-		searchPlaceholder: 'Buscar por nombre de archivo…',
+		searchPlaceholder: 'Buscar por descripción, persona o año…',
 		collection: 'Colección',
 		allCollections: 'Todas las colecciones',
 		favorites: 'Favoritas',
@@ -86,11 +86,42 @@ export const es = {
 		uploading: 'Subiendo…',
 		close: 'Cerrar'
 	},
+	notes: {
+		heading: 'Datos de la foto',
+		caption: 'Descripción',
+		noCaption: 'Sin descripción',
+		year: 'Año',
+		noYear: 'Sin año',
+		people: 'Personas',
+		noPeople: 'Sin personas',
+		edit: 'Editar',
+		save: 'Guardar',
+		saving: 'Guardando…',
+		cancel: 'Cancelar',
+		yearHint: 'Por ejemplo, 1975',
+		addPerson: 'Añadir persona',
+		addPersonHint: 'Escribe un nombre y pulsa Intro',
+		removePerson: (name: string) => `Quitar a ${name}`,
+		problem: {
+			captionTooLong: (max: number) => `La descripción no puede pasar de ${max} caracteres.`,
+			hasBackslash: 'No se puede usar la barra invertida (\\).',
+			year: (min: number, max: number) => `El año tiene que ser un número de cuatro cifras entre ${min} y ${max}.`,
+			personTooLong: (max: number) => `Un nombre no puede pasar de ${max} caracteres.`,
+			tooManyPeople: 'Hay demasiadas personas en la foto: quita alguna.',
+			other: 'Revisa los datos de la foto.'
+		}
+	},
 	app: {
 		title: 'Fokkelman · Fotos',
 		heading: 'Fotos de la familia',
 		favoriteFailed: (publicId: string) =>
-			`No se pudo actualizar el favorito de ${publicId}. Inténtalo de nuevo.`
+			`No se pudo actualizar el favorito de ${publicId}. Inténtalo de nuevo.`,
+		annotateFailed: (photos: number) =>
+			photos === 1
+				? 'No se pudieron guardar los datos de la foto. Inténtalo de nuevo.'
+				: `No se pudieron guardar los datos de ${photos} fotos. Inténtalo de nuevo.`,
+		annotateTooManyPeople: 'Hay demasiadas personas en la foto: quita alguna e inténtalo de nuevo.',
+		annotateTooManyChanges: 'Son demasiados cambios a la vez. Hazlos en grupos más pequeños.'
 	}
 };
 
@@ -123,7 +154,7 @@ export const en: SharedMessages & { demo: DemoMessages } = {
 	},
 	grid: {
 		empty: 'No photos match your filters.',
-		open: (name) => `Open ${name}`
+		open: (name, details) => (details ? `Open ${name}: ${details}` : `Open ${name}`)
 	},
 	viewer: {
 		label: 'Photo viewer',

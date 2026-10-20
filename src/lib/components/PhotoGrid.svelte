@@ -19,6 +19,10 @@
 
 	const m = getMessages().grid;
 
+	/** What a screen reader is told about a photo besides its name: the caption and the year, when there are any. */
+	const describe = ({ caption, year }: Photo): string =>
+		[caption, year].filter((part) => part !== '' && part !== null).join(', ');
+
 	/** Rows drawn at first, and added each time the end of the page comes near. */
 	const ROW_BATCH = 12;
 	/** Space between photos, in px, horizontally and between rows. */
@@ -79,10 +83,11 @@
 					<button
 						class="cell"
 						style:width="{placed.width}px"
-						aria-label={m.open(placed.item.publicId)}
+						aria-label={m.open(placed.item.publicId, describe(placed.item))}
 						onclick={() => onOpen(placed.item.publicId)}
 					>
 						<img src={thumbUrl(cloudName, placed.item)} alt="" loading="lazy" />
+						{#if placed.item.year !== null}<span class="year" aria-hidden="true">{placed.item.year}</span>{/if}
 						{#if placed.item.favorite}<span class="star" aria-hidden="true">★</span>{/if}
 					</button>
 				{/each}
@@ -127,11 +132,22 @@
 	.star {
 		position: absolute;
 		bottom: 6px;
-		left: 8px;
+		right: 8px;
 		color: var(--accent);
 		font-size: 1.1rem;
 		line-height: 1;
 		text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+	}
+	.year {
+		position: absolute;
+		bottom: 6px;
+		left: 6px;
+		padding: 1px 6px;
+		border-radius: 999px;
+		background: rgb(0 0 0 / 0.6);
+		color: #fff;
+		font-size: 0.75rem;
+		line-height: 1.3;
 	}
 	.sentinel {
 		height: 1px;

@@ -1,3 +1,4 @@
+import { fold } from './annotations';
 import type { Photo } from './types';
 
 export interface GalleryFilters {
@@ -6,14 +7,37 @@ export interface GalleryFilters {
 	favoritesOnly: boolean;
 }
 
+/** Everything a search looks into, in lower case and without accents. */
+const searchText = (p: Photo): string =>
+	fold([p.publicId, p.caption, ...p.people, p.year ?? ''].join(' '));
+
+/**
+ * Every word of the query has to appear somewhere in the file name, the caption, the people or the
+ * year, whatever the case or the accents: "maria 1975" finds "María" in a photo of 1975.
+ */
 export function filterPhotos(photos: Photo[], filters: GalleryFilters): Photo[] {
-	const q = filters.query.trim().toLowerCase();
+	const words = fold(filters.query).split(/\s+/).filter(Boolean);
 	return photos.filter(
 		(p) =>
 			(!filters.folder || p.folder === filters.folder) &&
 			(!filters.favoritesOnly || p.favorite) &&
-			(!q || p.publicId.toLowerCase().includes(q))
+			(words.length === 0 || words.every((word) => searchText(p).includes(word)))
 	);
+}
+
+/**
+ * The order of the gallery: the oldest year first, the photos with no year at the end, and by file
+ * name within the same year. A new array; the one given is left as it was.
+ */
+export function sortPhotos(photos: Photo[]): Photo[] {
+	return [...photos].sort((a, b) => {
+		if (a.year !== b.year) {
+			if (a.year === null) return 1;
+			if (b.year === null) return -1;
+			return a.year - b.year;
+		}
+		return a.publicId < b.publicId ? -1 : a.publicId > b.publicId ? 1 : 0;
+	});
 }
 
 export function filtersFromSearchParams(params: URLSearchParams): GalleryFilters {

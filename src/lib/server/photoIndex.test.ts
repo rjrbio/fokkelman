@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createIndexCache, withFavorite } from './photoIndex';
 import type { Photo } from '$lib/types';
+import { noAnnotation } from '$lib/annotations';
 
 const photo = (publicId: string): Photo => ({
 	publicId,
@@ -8,7 +9,8 @@ const photo = (publicId: string): Photo => ({
 	format: 'jpg',
 	width: 1,
 	height: 1,
-	favorite: false
+	favorite: false,
+	...noAnnotation()
 });
 
 describe('createIndexCache', () => {

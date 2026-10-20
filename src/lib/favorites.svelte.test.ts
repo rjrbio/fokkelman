@@ -8,6 +8,7 @@ import {
 	withFavoriteOverrides
 } from './favorites.svelte';
 import type { Photo } from './types';
+import { noAnnotation } from './annotations';
 
 const photo = (publicId: string, favorite = false): Photo => ({
 	publicId,
@@ -15,7 +16,8 @@ const photo = (publicId: string, favorite = false): Photo => ({
 	format: 'jpg',
 	width: 1,
 	height: 1,
-	favorite
+	favorite,
+	...noAnnotation()
 });
 
 const ok = () => Promise.resolve(new Response(null, { status: 204 }));
