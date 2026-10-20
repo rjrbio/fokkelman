@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Photo } from '$lib/types';
-import { noAnnotation } from '$lib/annotations';
+import { parseContext } from './context';
 
 export interface CloudinaryConfig {
 	cloudName: string;
@@ -75,6 +75,8 @@ interface SearchResource {
 	width: number;
 	height: number;
 	tags?: string[];
+	/** Only present when the search asked for it with `with_field`. */
+	context?: unknown;
 }
 
 export async function searchAllPhotos(
@@ -91,7 +93,7 @@ export async function searchAllPhotos(
 			body: JSON.stringify({
 				expression,
 				max_results: 500,
-				with_field: ['tags'],
+				with_field: ['tags', 'context'],
 				sort_by: [{ public_id: 'asc' }],
 				...(nextCursor ? { next_cursor: nextCursor } : {})
 			})
@@ -99,6 +101,7 @@ export async function searchAllPhotos(
 		if (!res.ok) throw new Error(`Cloudinary search failed: ${res.status}`);
 		const data = (await res.json()) as { resources: SearchResource[]; next_cursor?: string };
 		for (const r of data.resources) {
+			const { annotation, extra } = parseContext(r.context);
 			photos.push({
 				publicId: r.public_id,
 				folder: r.folder ?? '',
@@ -106,7 +109,8 @@ export async function searchAllPhotos(
 				width: r.width,
 				height: r.height,
 				favorite: (r.tags ?? []).includes('favorite'),
-				...noAnnotation()
+				...annotation,
+				...(Object.keys(extra).length > 0 ? { extraContext: extra } : {})
 			});
 		}
 		nextCursor = data.next_cursor;

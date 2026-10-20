@@ -101,6 +101,33 @@ describe('searchAllPhotos', () => {
 		]);
 	});
 
+	it('asks for the context and maps it to the annotation, keeping the keys that are not ours', async () => {
+		const fetchFn = vi.fn().mockResolvedValueOnce(
+			jsonResponse({
+				resources: [
+					{
+						public_id: 'a1',
+						folder: '',
+						format: 'jpg',
+						width: 10,
+						height: 20,
+						context: { custom: { caption: 'Playa', year: '1975', people: 'Ana, Luis', alt: 'texto' } }
+					},
+					{ public_id: 'a2', folder: '', format: 'jpg', width: 10, height: 20, context: { custom: { year: 'circa 1975' } } }
+				]
+			})
+		);
+
+		const photos = await searchAllPhotos(makeConfig(fetchFn as typeof fetch), 'resource_type:image');
+
+		expect(JSON.parse(fetchFn.mock.calls[0][1].body as string).with_field).toEqual(['tags', 'context']);
+		expect(photos[0]).toMatchObject({ caption: 'Playa', year: 1975, people: ['Ana', 'Luis'], extraContext: { alt: 'texto' } });
+		expect(photos[1]).toEqual({
+			publicId: 'a2', folder: '', format: 'jpg', width: 10, height: 20, favorite: false, ...noAnnotation()
+		});
+		expect(photos[1]).not.toHaveProperty('extraContext');
+	});
+
 	it('throws on HTTP error', async () => {
 		const fetchFn = vi.fn().mockResolvedValue(jsonResponse({}, 401));
 		await expect(
