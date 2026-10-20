@@ -138,8 +138,59 @@ describe('planAnnotation', () => {
 			ok: true,
 			changes: [],
 			unchanged: ['a'],
+			blocked: [],
 			operations: [],
 			calls: 0
+		});
+	});
+
+	describe('a backslash in what is already written', () => {
+		// Cloudinary's rule for a literal backslash in a context value is not known, so a value that has one is
+		// never written back: better a notice than a value that is read differently afterwards.
+		it('is not rewritten when it would travel in an add: the photo is blocked, the others go on', () => {
+			const hand = photo('a', { people: ['C:\\Ana'] });
+			const plan = planAnnotation([hand, photo('b', { people: ['Luis'] })], { addPeople: ['Marta'] });
+			expect(plan).toMatchObject({
+				ok: true,
+				blocked: ['a'],
+				changes: [{ publicId: 'b' }],
+				operations: [{ kind: 'add', publicIds: ['b'], entries: { people: 'Luis, Marta' } }]
+			});
+			expect(plan.ok && plan.changes.map((c) => c.publicId)).toEqual(['b']);
+			expect(JSON.stringify(plan.ok && plan.operations)).not.toContain('C:');
+		});
+
+		it('is not rewritten when it would travel in a replace, whatever key it is in', () => {
+			const inExtra = photo('a', { caption: 'x', extraContext: { alt: 'a\\b' } });
+			const inPeople = photo('b', { caption: 'x', people: ['Ana\\'] });
+			const clean = photo('c', { caption: 'x', year: 1975 });
+			const plan = planAnnotation([inExtra, inPeople, clean], { caption: '' });
+			expect(plan).toMatchObject({
+				ok: true,
+				blocked: ['a', 'b'],
+				operations: [{ kind: 'replace', publicIds: ['c'] }]
+			});
+			expect(plan.ok && plan.changes.map((c) => c.publicId)).toEqual(['c']);
+		});
+
+		it('does not matter when the value is not written: an add only writes the keys that change', () => {
+			const hand = photo('a', { year: 1975, extraContext: { alt: 'a\\b' }, people: ['Ana\\'] });
+			const plan = planAnnotation([hand], { caption: 'Playa' });
+			expect(plan).toMatchObject({
+				ok: true,
+				blocked: [],
+				operations: [{ kind: 'add', publicIds: ['a'], entries: { caption: 'Playa' } }]
+			});
+		});
+
+		it('does not count a photo that was going to stay as it is', () => {
+			const hand = photo('a', { people: ['Ana\\'] });
+			expect(planAnnotation([hand], { addPeople: ['Ana\\'] })).toMatchObject({ ok: true, blocked: [], unchanged: ['a'] });
+		});
+
+		it('does not spend calls on a blocked photo', () => {
+			const hand = photo('a', { caption: 'x', extraContext: { alt: 'a\\b' } });
+			expect(planAnnotation([hand], { caption: '' })).toMatchObject({ ok: true, blocked: ['a'], operations: [], calls: 0 });
 		});
 	});
 });
@@ -186,7 +237,10 @@ describe('writeOperations', () => {
 			['add', 'caption=x|year=1975']
 		]);
 		expect(result).toEqual({ done: [], failed: ['a'] });
-		expect(errorLog).toHaveBeenCalledTimes(1);
+		// What the context was is logged before the restore, so that it is in the log even if the restore never ends.
+		expect(errorLog).toHaveBeenCalledTimes(2);
+		expect(String(errorLog.mock.calls[0][0])).toContain('may now be empty');
+		expect(String(errorLog.mock.calls[0][0])).toContain('caption=x|year=1975');
 		expect(logged()).toContain('could not write the context of a');
 	});
 
@@ -211,12 +265,64 @@ describe('writeOperations', () => {
 		expect(logged()).toContain('could not write the context of photo-1, photo-2');
 	});
 
-	it('does not try to write anything if it could not even empty it', async () => {
-		cloudinary.updateContext.mockRejectedValue(new Error('boom'));
-		const result = await writeOperations(cfg, [{ kind: 'replace', publicIds: ['a'], before: { caption: 'x' }, after: { year: '1975' } }]);
-		expect(cloudinary.updateContext).toHaveBeenCalledTimes(1);
-		expect(result.failed).toEqual(['a']);
-		expect(errorLog).toHaveBeenCalledTimes(1);
+	describe('when emptying the context fails', () => {
+		// The call may have been applied even if it came back as an error (a timeout, a 5xx, a connection reset),
+		// so from the moment it is sent the old context is treated as possibly gone.
+		const replace = (after: Record<string, string>) => ({
+			kind: 'replace' as const,
+			publicIds: ['photo-1', 'photo-2'],
+			before: { caption: 'x', year: '1975' },
+			after
+		});
+
+		it('logs what the context was and puts it back, without writing the new one', async () => {
+			cloudinary.updateContext.mockImplementation(async (_cfg, command) => {
+				if (command === 'remove_all') throw new Error('timeout');
+			});
+			const result = await writeOperations(cfg, [replace({ year: '1975' })]);
+
+			expect(cloudinary.updateContext.mock.calls.map((call) => [call[1], call[2], call[3]])).toEqual([
+				['remove_all', ['photo-1', 'photo-2'], undefined],
+				['add', ['photo-1', 'photo-2'], 'caption=x|year=1975']
+			]);
+			expect(result).toEqual({ done: [], failed: ['photo-1', 'photo-2'] });
+			const warning = errorLog.mock.calls.find(([message]) => String(message).includes('may now be empty'));
+			expect(String(warning?.[0])).toContain('photo-1, photo-2');
+			expect(String(warning?.[0])).toContain('caption=x|year=1975');
+			expect(warning?.[1]).toEqual(new Error('timeout'));
+			expect(logged()).toContain('could not write the context of photo-1, photo-2');
+			expect(logged()).not.toContain('could not be put back');
+		});
+
+		it('puts it back when there was nothing to write again too', async () => {
+			cloudinary.updateContext.mockImplementation(async (_cfg, command) => {
+				if (command === 'remove_all') throw new Error('timeout');
+			});
+			const result = await writeOperations(cfg, [replace({})]);
+			expect(cloudinary.updateContext.mock.calls.map((call) => [call[1], call[3]])).toEqual([
+				['remove_all', undefined],
+				['add', 'caption=x|year=1975']
+			]);
+			expect(result.failed).toEqual(['photo-1', 'photo-2']);
+		});
+
+		it('says so, and goes on, when the old context cannot be put back either', async () => {
+			cloudinary.updateContext.mockRejectedValue(new Error('down'));
+			const result = await writeOperations(cfg, [replace({ year: '1975' }), op(['b'])]);
+
+			expect(cloudinary.updateContext.mock.calls.map((call) => [call[1], call[2]])).toEqual([
+				['remove_all', ['photo-1', 'photo-2']],
+				['add', ['photo-1', 'photo-2']],
+				['add', ['b']]
+			]);
+			expect(cloudinary.updateContext.mock.calls[1][3]).toBe('caption=x|year=1975');
+			expect(result).toEqual({ done: [], failed: ['photo-1', 'photo-2', 'b'] });
+			expect(logged()).toContain('may now be empty');
+			const restoreLog = errorLog.mock.calls.find(([message]) => String(message).includes('could not be put back'));
+			expect(String(restoreLog?.[0])).toContain('photo-1, photo-2');
+			expect(String(restoreLog?.[0])).toContain('caption=x|year=1975');
+			expect(logged()).toContain('could not write the context of photo-1, photo-2');
+		});
 	});
 
 	it('goes on with the other groups when one fails, and says which photos failed', async () => {

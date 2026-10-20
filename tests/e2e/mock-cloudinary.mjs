@@ -43,6 +43,7 @@ let state = createState();
 
 // Lo que la API real firma: todos los parámetros menos `file`, `api_key`, `resource_type` y la propia
 // firma, ordenados, con las listas (`public_ids[]`) unidas por comas. Si la app firma mal, el test falla.
+const API_KEY = 'test-key';
 const API_SECRET = 'test-secret';
 function signatureIsValid(params) {
 	const signed = {};
@@ -112,6 +113,44 @@ const server = createServer(async (req, res) => {
 				)
 			})
 		);
+		return;
+	}
+
+	// Lo que la API de administración contesta a `resources_by_ids`: el contexto que cada foto tiene ahora
+	// mismo (a diferencia de la búsqueda, sin retraso). Pide la misma autenticación Basic que la real.
+	if (req.method === 'GET' && req.url?.includes('/resources/image/upload')) {
+		const basic = 'Basic ' + Buffer.from(`${API_KEY}:${API_SECRET}`).toString('base64');
+		if (req.headers.authorization !== basic) {
+			res.statusCode = 401;
+			res.end(JSON.stringify({ error: { message: 'Invalid credentials' } }));
+			return;
+		}
+		const query = new URL(req.url, 'http://mock').searchParams;
+		const ids = query.getAll('public_ids[]');
+		const withContext = query.get('context') === 'true';
+		// Las que no conoce, sencillamente no salen; solo lleva `context` la foto que tiene alguno.
+		const resources = [...state.family, ...state.demo]
+			.filter((photo) => ids.includes(photo.public_id))
+			.slice(0, Number(query.get('max_results') ?? 10))
+			.map(({ context, ...photo }) =>
+				withContext && context && Object.keys(context).length > 0 ? { ...photo, context: { custom: context } } : photo
+			);
+		res.end(JSON.stringify({ resources }));
+		return;
+	}
+
+	// Solo para los tests: pone el contexto de una foto sin pasar por la app, como una edición a mano en la
+	// Media Library de Cloudinary que la app no ha visto.
+	if (req.method === 'POST' && req.url === '/__context') {
+		const { publicId, context } = JSON.parse(body);
+		const photo = [...state.family, ...state.demo].find((candidate) => candidate.public_id === publicId);
+		if (!photo) {
+			res.statusCode = 404;
+			res.end(JSON.stringify({ error: `mock: no photo ${publicId}` }));
+			return;
+		}
+		photo.context = { ...context };
+		res.end(JSON.stringify({}));
 		return;
 	}
 

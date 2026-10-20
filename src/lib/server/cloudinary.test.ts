@@ -2,7 +2,9 @@ import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { noAnnotation } from '$lib/annotations';
 import {
+	CONTEXT_CALL_TIMEOUT_MS,
 	createUploadSignature,
+	getContexts,
 	searchAllPhotos,
 	setFavorite,
 	signParams,
@@ -107,10 +109,76 @@ describe('updateContext', () => {
 		expect(body.get('signature')).toBe(sha1('command=remove_all&public_ids=a&timestamp=1700000000secret123'));
 	});
 
+	it('gives up a call that takes too long', async () => {
+		const fetchFn = vi.fn().mockResolvedValue(jsonResponse({}));
+		await updateContext(makeConfig(fetchFn as typeof fetch), 'add', ['a'], 'x=y');
+		await updateContext(makeConfig(fetchFn as typeof fetch), 'remove_all', ['a']);
+		for (const [, init] of fetchFn.mock.calls) expect(init.signal).toBeInstanceOf(AbortSignal);
+	});
+
 	it('throws on HTTP error', async () => {
 		const fetchFn = vi.fn().mockResolvedValue(jsonResponse({}, 400));
 		await expect(updateContext(makeConfig(fetchFn as typeof fetch), 'add', ['a'], 'x=y')).rejects.toThrow(
 			'Cloudinary context API failed: 400'
+		);
+	});
+});
+
+describe('getContexts', () => {
+	const basic = 'Basic ' + Buffer.from('key123:secret123').toString('base64');
+
+	it('is a 3 second wait at most', () => {
+		expect(CONTEXT_CALL_TIMEOUT_MS).toBe(3000);
+	});
+
+	it('asks the Admin API for the context of the photos, authenticated, with a time limit', async () => {
+		const fetchFn = vi.fn().mockResolvedValue(jsonResponse({ resources: [] }));
+
+		await getContexts(makeConfig(fetchFn as typeof fetch), ['a', 'b/c', 'd e']);
+
+		const [url, init] = fetchFn.mock.calls[0];
+		const asked = new URL(url);
+		expect(`${asked.origin}${asked.pathname}`).toBe('https://api.example/v1_1/testcloud/resources/image/upload');
+		expect(asked.searchParams.getAll('public_ids[]')).toEqual(['a', 'b/c', 'd e']);
+		expect(asked.searchParams.get('context')).toBe('true');
+		expect(asked.searchParams.get('max_results')).toBe('100');
+		expect(init.method ?? 'GET').toBe('GET');
+		expect(init.headers.Authorization).toBe(basic);
+		expect(init.signal).toBeInstanceOf(AbortSignal);
+	});
+
+	it('maps each photo it gets back to its context, and says nothing of the ones it does not get', async () => {
+		const fetchFn = vi.fn().mockResolvedValue(
+			jsonResponse({
+				resources: [
+					{ public_id: 'a', context: { custom: { caption: 'Playa', alt: 'x' } } },
+					{ public_id: 'b' },
+					{ public_id: 'c', context: { custom: {} } }
+				]
+			})
+		);
+
+		const contexts = await getContexts(makeConfig(fetchFn as typeof fetch), ['a', 'b', 'c', 'gone']);
+
+		expect([...contexts.keys()]).toEqual(['a', 'b', 'c']);
+		expect(contexts.get('a')).toEqual({ custom: { caption: 'Playa', alt: 'x' } });
+		// A photo with no context is there, with nothing: it is not the same as a photo that was not returned.
+		expect(contexts.has('b')).toBe(true);
+		expect(contexts.get('b')).toBeUndefined();
+		expect(contexts.get('c')).toEqual({ custom: {} });
+		expect(contexts.has('gone')).toBe(false);
+	});
+
+	it('does not call at all when there is nothing to ask for', async () => {
+		const fetchFn = vi.fn();
+		expect(await getContexts(makeConfig(fetchFn as typeof fetch), [])).toEqual(new Map());
+		expect(fetchFn).not.toHaveBeenCalled();
+	});
+
+	it('throws on HTTP error', async () => {
+		const fetchFn = vi.fn().mockResolvedValue(jsonResponse({}, 401));
+		await expect(getContexts(makeConfig(fetchFn as typeof fetch), ['a'])).rejects.toThrow(
+			'Cloudinary resources API failed: 401'
 		);
 	});
 });

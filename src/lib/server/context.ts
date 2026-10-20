@@ -1,4 +1,5 @@
 import { cleanText, fold, MIN_YEAR, noAnnotation, type Annotation } from '$lib/annotations';
+import type { Photo } from '$lib/types';
 
 /** The context keys this app owns. Anything else on a photo is somebody else's and is left alone. */
 export const MANAGED_KEYS = ['caption', 'year', 'people'] as const;
@@ -55,6 +56,18 @@ export function parseContext(raw: unknown, currentYear: number = new Date().getF
 		else if (text !== '') extra[key] = text;
 	}
 	return { annotation, extra };
+}
+
+/**
+ * The photo with the annotation and the extra keys that a context says it has. `raw` is Cloudinary's
+ * answer for the photo (or `undefined` when it has no context, which is the same as an empty one).
+ */
+export function withContext(photo: Photo, raw: unknown): Photo {
+	const { annotation, extra } = parseContext(raw);
+	const next: Photo = { ...photo, ...annotation };
+	if (Object.keys(extra).length > 0) next.extraContext = extra;
+	else delete next.extraContext;
+	return next;
 }
 
 /** `|` and `=` are the separators of the context string; inside a value they need a backslash. */

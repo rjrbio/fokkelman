@@ -13,6 +13,11 @@ test.beforeEach(async ({ page }) => {
 	await page.waitForLoadState('networkidle'); // hydration
 });
 
+// The years written here stay in the mock, which the other specs share, and the gallery goes by year: put it back as it was.
+test.afterEach(async ({ page }) => {
+	await resetBackend(page);
+});
+
 const cells = (page: import('@playwright/test').Page) => page.getByTestId('photo-grid').getByRole('button');
 
 test('the gallery goes by year, oldest first, and the photos with no year come last', async ({ page }) => {

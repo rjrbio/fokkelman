@@ -69,6 +69,15 @@ export async function setFavorite(
 }
 
 /**
+ * How long one call that reads or writes a context may take. Without a limit, one slow call can last
+ * until the serverless function is cut off, between the two calls of a rewrite.
+ */
+export const CONTEXT_CALL_TIMEOUT_MS = 3000;
+
+const basicAuth = (cfg: CloudinaryConfig): string =>
+	'Basic ' + Buffer.from(`${cfg.apiKey}:${cfg.apiSecret}`).toString('base64');
+
+/**
  * Changes the context of up to 100 photos with the Upload API. It can only `add` keys (replacing
  * the ones that exist) or `remove_all` of them; there is no way to remove one key.
  * `public_ids` goes as an array (`public_ids[]`) and is signed comma-joined, as Cloudinary's own SDKs do.
@@ -95,9 +104,33 @@ export async function updateContext(
 	body.set('signature', signParams(signed, cfg.apiSecret));
 	const res = await cfg.fetchFn(`${cfg.apiBase}/v1_1/${cfg.cloudName}/image/context`, {
 		method: 'POST',
-		body
+		body,
+		signal: AbortSignal.timeout(CONTEXT_CALL_TIMEOUT_MS)
 	});
 	if (!res.ok) throw new Error(`Cloudinary context API failed: ${res.status}`);
+}
+
+/**
+ * The context Cloudinary has right now for up to 100 photos, read with the Admin API. Unlike the Search
+ * API it is not eventually consistent, so it is what a write is planned from. The map has an entry for
+ * every photo Cloudinary returned (`undefined` when that photo has no context) and none for the others.
+ */
+export async function getContexts(cfg: CloudinaryConfig, publicIds: string[]): Promise<Map<string, unknown>> {
+	const contexts = new Map<string, unknown>();
+	// Without ids the API would list the library instead of answering nothing.
+	if (publicIds.length === 0) return contexts;
+	const query = new URLSearchParams();
+	for (const id of publicIds) query.append('public_ids[]', id);
+	query.set('context', 'true');
+	query.set('max_results', '100');
+	const res = await cfg.fetchFn(`${cfg.apiBase}/v1_1/${cfg.cloudName}/resources/image/upload?${query}`, {
+		headers: { Authorization: basicAuth(cfg) },
+		signal: AbortSignal.timeout(CONTEXT_CALL_TIMEOUT_MS)
+	});
+	if (!res.ok) throw new Error(`Cloudinary resources API failed: ${res.status}`);
+	const data = (await res.json()) as { resources?: { public_id: string; context?: unknown }[] };
+	for (const resource of data.resources ?? []) contexts.set(resource.public_id, resource.context);
+	return contexts;
 }
 
 interface SearchResource {
@@ -116,7 +149,7 @@ export async function searchAllPhotos(
 	expression: string
 ): Promise<Photo[]> {
 	const photos: Photo[] = [];
-	const auth = 'Basic ' + Buffer.from(`${cfg.apiKey}:${cfg.apiSecret}`).toString('base64');
+	const auth = basicAuth(cfg);
 	let nextCursor: string | undefined;
 	do {
 		const res = await cfg.fetchFn(`${cfg.apiBase}/v1_1/${cfg.cloudName}/resources/search`, {

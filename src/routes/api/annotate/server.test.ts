@@ -65,6 +65,14 @@ describe('POST /api/annotate', () => {
 		expect((await call({ publicIds: ['demo/x'], patch: { caption: 'x' } })).status).toBe(404);
 	});
 
+	it('answers 503 when the current data of the photos cannot be read, and says so', async () => {
+		photos.annotatePhotos.mockResolvedValue({ status: 'unavailable' });
+		expect(await call({ publicIds: ['a'], patch: { caption: 'x' } })).toEqual({
+			status: 503,
+			body: { message: 'Could not read the current photo data', problem: 'unavailable' }
+		});
+	});
+
 	it('answers 422 with the reason when the patch cannot be applied to a photo', async () => {
 		photos.annotatePhotos.mockResolvedValue({ status: 'rejected', problem: 'too-many-people' });
 		expect(await call({ publicIds: ['a'], patch: { addPeople: ['Ana'] } })).toMatchObject({

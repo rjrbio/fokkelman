@@ -26,6 +26,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const outcome = await annotatePhotos([...new Set(ids as string[])], patch.value);
 	if (outcome.status === 'unknown-photo') return json({ message: 'Unknown photo' }, { status: 404 });
+	if (outcome.status === 'unavailable') {
+		return json({ message: 'Could not read the current photo data', problem: 'unavailable' }, { status: 503 });
+	}
 	if (outcome.status === 'rejected') {
 		return json({ message: 'Cannot apply the patch', problem: outcome.problem }, { status: 422 });
 	}

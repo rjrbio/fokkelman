@@ -9,6 +9,11 @@ test.beforeEach(async ({ page }) => {
 	await page.waitForLoadState('networkidle'); // hydration
 });
 
+// What these tests save stays in the mock, which the other specs share: put it back as it was.
+test.afterEach(async ({ page }) => {
+	await resetBackend(page);
+});
+
 // Sample_002 comes with a caption ("Playa de Sitges") and two people (Ana, Luis), and no year.
 async function openAndEdit(page: Page, name = 'Abrir Sample_002') {
 	await page.getByRole('button', { name: new RegExp(`^${name}`) }).click();
@@ -60,6 +65,7 @@ test('clears a field', async ({ page }) => {
 	await viewer.getByLabel('Descripción').fill('');
 	await viewer.getByRole('button', { name: 'Guardar' }).click();
 
+	await expect(viewer.getByRole('button', { name: 'Editar', exact: true })).toBeVisible(); // the save has ended
 	await expect(viewer.getByText('Sin descripción')).toBeVisible();
 	expect(await storedContext('Sample_002')).toEqual({ people: 'Ana, Luis' });
 });
@@ -69,6 +75,8 @@ test('takes a name that was typed but not added when saving', async ({ page }) =
 	await viewer.getByLabel('Personas').pressSequentially('Marta');
 	await viewer.getByRole('button', { name: 'Guardar' }).click();
 
+	// The name is also in the form until the save ends, so wait for the editor to close before looking at what was stored.
+	await expect(viewer.getByRole('button', { name: 'Editar', exact: true })).toBeVisible();
 	await expect(viewer.getByRole('listitem').filter({ hasText: 'Marta' })).toBeVisible();
 	expect(await storedContext('Sample_001')).toEqual({ people: 'Marta' });
 });

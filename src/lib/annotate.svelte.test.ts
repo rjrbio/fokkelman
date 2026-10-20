@@ -74,6 +74,14 @@ describe('saveAnnotation', () => {
 		expect(annotationFailure).toEqual({ problem: 'failed', count: 1 });
 	});
 
+	it('takes the change back with the usual notice when the server cannot read the photos (503, a problem the browser does not know)', async () => {
+		const base = [photo('a', { caption: 'Vieja' })];
+		const unavailable = answer({ message: 'Could not read the current photo data', problem: 'unavailable' }, 503);
+		expect(await saveAnnotation(base, { caption: 'Nueva' }, unavailable)).toBe('failed');
+		expect(annotationOf('a', base).caption).toBe('Vieja');
+		expect(annotationFailure).toEqual({ problem: 'failed', count: 1 });
+	});
+
 	it('takes the change back when the network fails', async () => {
 		const base = [photo('a')];
 		expect(await saveAnnotation(base, { year: 1975 }, () => Promise.reject(new Error('offline')))).toBe('failed');

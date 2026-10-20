@@ -1,8 +1,9 @@
 import { env } from '$env/dynamic/private';
 import type { Annotation, AnnotationPatch } from '$lib/annotations';
 import type { Photo } from '$lib/types';
-import { planAnnotation, withChange, writeOperations } from './annotate';
-import { searchAllPhotos, setFavorite, type CloudinaryConfig } from './cloudinary';
+import { CONTEXT_BATCH, chunks, planAnnotation, withChange, writeOperations } from './annotate';
+import { getContexts, searchAllPhotos, setFavorite, type CloudinaryConfig } from './cloudinary';
+import { withContext } from './context';
 import { createIndexCache, withFavorite } from './photoIndex';
 
 export const DEMO_FOLDER = 'demo';
@@ -47,18 +48,25 @@ export async function markFavorite(
 export type AnnotateOutcome =
 	| { status: 'unknown-photo' }
 	| { status: 'rejected'; problem: 'too-many-people' | 'too-many-calls' }
+	/** The current context of the photos could not be read, so nothing was written. */
+	| { status: 'unavailable' }
 	| {
 			status: 'done';
-			/** The photos that were written, with the annotation they have now. */
+			/** The photos that were written or that already were as asked, with the annotation they have now. */
 			updated: { publicId: string; annotation: Annotation }[];
-			/** The photos where Cloudinary failed; the family index is reloaded the next time it is read. */
+			/**
+			 * The photos that were not written: Cloudinary failed, did not return them, or their text has a
+			 * backslash. The family index is reloaded the next time it is read.
+			 */
 			failed: string[];
 	  };
 
 /**
  * Applies a patch to family photos and patches the cached index with what was really written.
- * The patch is merged with what the server knows of each photo (so adding a person keeps the ones
- * somebody else added); it refuses ids that are not in the family index, the demo folder included.
+ * The patch is merged with what Cloudinary has for each photo right now, read with the Admin API just
+ * before (so adding a person keeps the ones somebody else added, and clearing a field rewrites the keys that
+ * are really there): the cached index can be out of date. It refuses ids that are not in the family index,
+ * the demo folder included.
  */
 export async function annotatePhotos(
 	publicIds: string[],
@@ -73,24 +81,50 @@ export async function annotatePhotos(
 		targets.push(photo);
 	}
 
-	const plan = planAnnotation(targets, patch);
+	const cfg = cloudinaryConfig();
+	const current = new Map<string, unknown>();
+	try {
+		for (const ids of chunks(publicIds, CONTEXT_BATCH)) {
+			for (const [id, context] of await getContexts(cfg, ids)) current.set(id, context);
+		}
+	} catch (err) {
+		console.error('[annotate] could not read the current context', err);
+		return { status: 'unavailable' };
+	}
+
+	const missing: string[] = [];
+	const fresh: Photo[] = [];
+	for (const photo of targets) {
+		if (current.has(photo.publicId)) fresh.push(withContext(photo, current.get(photo.publicId)));
+		else missing.push(photo.publicId);
+	}
+
+	const plan = planAnnotation(fresh, patch);
 	if (!plan.ok) return { status: 'rejected', problem: plan.problem };
 
-	const { done, failed } = await writeOperations(cloudinaryConfig(), plan.operations);
+	const { done, failed: notWritten } = await writeOperations(cfg, plan.operations);
 	const written = new Map(plan.changes.filter((c) => done.includes(c.publicId)).map((c) => [c.publicId, c]));
+	const unchanged = new Set(plan.unchanged);
 	familyCache.patch((all) =>
 		all.map((photo) => {
 			const change = written.get(photo.publicId);
-			return change ? withChange(photo, change) : photo;
+			if (change) return withChange(photo, change);
+			// Found as asked already: what was cached for it was out of date, or it would not have been found so.
+			return unchanged.has(photo.publicId) ? withContext(photo, current.get(photo.publicId)) : photo;
 		})
 	);
+	const failed = [...notWritten, ...missing, ...plan.blocked];
 	if (failed.length > 0) familyCache.invalidate();
 
-	return {
-		status: 'done',
-		updated: [...written.values()].map((c) => ({ publicId: c.publicId, annotation: c.after })),
-		failed
-	};
+	const updated: { publicId: string; annotation: Annotation }[] = [];
+	for (const photo of fresh) {
+		const change = written.get(photo.publicId);
+		if (change) updated.push({ publicId: photo.publicId, annotation: change.after });
+		else if (unchanged.has(photo.publicId)) {
+			updated.push({ publicId: photo.publicId, annotation: { caption: photo.caption, year: photo.year, people: photo.people } });
+		}
+	}
+	return { status: 'done', updated, failed };
 }
 
 /**

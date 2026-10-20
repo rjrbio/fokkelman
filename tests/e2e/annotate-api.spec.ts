@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { login, resetBackend, storedContext } from './helpers';
+import { editContextByHand, login, resetBackend, storedContext } from './helpers';
 
 // The mock verifies the signature of every context call the way Cloudinary does and keeps what it is
 // sent, so these tests read back what really got stored.
@@ -10,6 +10,11 @@ async function annotate(page: Page, publicIds: string[], patch: unknown) {
 
 test.beforeEach(async ({ page }) => {
 	await login(page);
+	await resetBackend(page);
+});
+
+// What these tests store stays in the mock, which the other specs share: put it back as it was.
+test.afterEach(async ({ page }) => {
 	await resetBackend(page);
 });
 
@@ -78,4 +83,70 @@ test('refuses what it should, and stores nothing', async ({ page }) => {
 	expect((await annotate(page, ['Sample_001'], { addPeople: ['Ana, Luis'] })).status()).toBe(400);
 	expect((await annotate(page, [], { caption: 'x' })).status()).toBe(400);
 	expect(await storedContext('Sample_001')).toBeUndefined();
+});
+
+// The app keeps a copy of the photo index for a few minutes. Somebody can change a photo in the Cloudinary
+// Media Library in the meantime, so a write is planned from what Cloudinary has when the request arrives.
+test.describe('what was changed behind the back of the app', () => {
+	test('is kept when a field is cleared, which rewrites the whole context', async ({ page }) => {
+		// The first call makes the app take its copy of the index, with "Cena" in it.
+		await annotate(page, ['Sample_006'], { caption: 'Cena' });
+		expect(await storedContext('Sample_006')).toEqual({ alt: 'texto alternativo', caption: 'Cena' });
+		// Then somebody adds a key of their own and a year in the Media Library.
+		await editContextByHand('Sample_006', { alt: 'texto alternativo', caption: 'Cena', fuente: 'álbum de la abuela', year: '1962' });
+
+		const response = await annotate(page, ['Sample_006'], { caption: '' });
+
+		expect(await storedContext('Sample_006')).toEqual({ alt: 'texto alternativo', fuente: 'álbum de la abuela', year: '1962' });
+		// And the answer is what the photo has, not what the app thought it had.
+		expect(await response.json()).toEqual({
+			updated: [{ publicId: 'Sample_006', annotation: { caption: '', year: 1962, people: [] } }],
+			failed: []
+		});
+	});
+
+	test('is kept when a person is added', async ({ page }) => {
+		await annotate(page, ['Sample_004'], { year: 1982 });
+		await editContextByHand('Sample_004', { people: 'Ana, Rosa', year: '1982', fuente: 'carta' });
+
+		const response = await annotate(page, ['Sample_004'], { addPeople: ['Luis'] });
+
+		expect(await storedContext('Sample_004')).toEqual({ people: 'Ana, Rosa, Luis', year: '1982', fuente: 'carta' });
+		expect((await response.json()).updated).toEqual([
+			{ publicId: 'Sample_004', annotation: { caption: '', year: 1982, people: ['Ana', 'Rosa', 'Luis'] } }
+		]);
+	});
+
+	test('is not written over when the photo already is as asked, and the answer says what it has', async ({ page }) => {
+		await annotate(page, ['Sample_004'], { year: 1982 });
+		await editContextByHand('Sample_004', { people: 'Ana, Rosa', caption: 'Hecho a mano' });
+
+		const response = await annotate(page, ['Sample_004'], { caption: 'Hecho a mano' });
+
+		expect(await storedContext('Sample_004')).toEqual({ people: 'Ana, Rosa', caption: 'Hecho a mano' });
+		expect(await response.json()).toEqual({
+			updated: [{ publicId: 'Sample_004', annotation: { caption: 'Hecho a mano', year: null, people: ['Ana', 'Rosa'] } }],
+			failed: []
+		});
+	});
+
+	test('clearing a field that somebody emptied by hand is not an error and writes nothing', async ({ page }) => {
+		await annotate(page, ['Sample_004'], { caption: 'Cena' });
+		await editContextByHand('Sample_004', { people: 'Ana' });
+
+		const response = await annotate(page, ['Sample_004'], { caption: '' });
+
+		expect(await storedContext('Sample_004')).toEqual({ people: 'Ana' });
+		expect((await response.json()).failed).toEqual([]);
+	});
+
+	test('a text with a backslash is not rewritten: the photo is reported as failed and nothing changes', async ({ page }) => {
+		await annotate(page, ['Sample_004'], { year: 1982 });
+		await editContextByHand('Sample_004', { people: 'Ana, C:\\Rosa', year: '1982' });
+
+		const response = await annotate(page, ['Sample_004'], { addPeople: ['Luis'] });
+
+		expect(await response.json()).toEqual({ updated: [], failed: ['Sample_004'] });
+		expect(await storedContext('Sample_004')).toEqual({ people: 'Ana, C:\\Rosa', year: '1982' });
+	});
 });

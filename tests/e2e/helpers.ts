@@ -77,3 +77,15 @@ export async function storedContext(publicId: string): Promise<Record<string, st
 	const context = state.family.find((photo) => photo.public_id === publicId)?.context;
 	return context && Object.keys(context).length > 0 ? context : undefined;
 }
+
+/**
+ * Sets the context of a photo straight in the Cloudinary mock, as if somebody had edited it by hand in the
+ * Media Library: the app does not know, and what it has cached stays as it was.
+ */
+export async function editContextByHand(publicId: string, context: Record<string, string>): Promise<void> {
+	const response = await fetch('http://127.0.0.1:9966/__context', {
+		method: 'POST',
+		body: JSON.stringify({ publicId, context })
+	});
+	if (!response.ok) throw new Error(`mock context edit failed: ${response.status}`);
+}

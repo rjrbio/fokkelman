@@ -228,6 +228,11 @@ test.describe('annotating on a phone', () => {
 		await viewerDialog(page).getByRole('button', { name: 'Editar', exact: true }).tap();
 	});
 
+	// What is saved here stays in the mock, which the other specs share: put it back as it was.
+	test.afterEach(async ({ page }) => {
+		await resetBackend(page);
+	});
+
 	test('edits and saves with taps', async ({ page }) => {
 		const viewer = viewerDialog(page);
 		await viewer.getByLabel('Descripción').fill('Con el móvil');

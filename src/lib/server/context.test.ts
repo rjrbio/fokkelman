@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { contextEntries, escapeContextText, parseContext, parsePeople, serializeContext } from './context';
+import type { Photo } from '$lib/types';
+import { contextEntries, escapeContextText, parseContext, parsePeople, serializeContext, withContext } from './context';
 
 const NOW = 2026;
 
@@ -86,6 +87,46 @@ describe('parseContext', () => {
 	it('uses the clock for this year when it is not given', () => {
 		const next = String(new Date().getFullYear() + 1);
 		expect(parseContext({ year: next }).annotation.year).toBeNull();
+	});
+});
+
+describe('withContext', () => {
+	const photo: Photo = {
+		publicId: 'a',
+		folder: 'f',
+		format: 'jpg',
+		width: 4,
+		height: 3,
+		favorite: true,
+		caption: 'Vieja',
+		year: 1975,
+		people: ['Ana'],
+		extraContext: { alt: 'viejo' }
+	};
+
+	it('lays what the context says now over the photo, and leaves the rest of the photo as it was', () => {
+		const next = withContext(photo, { custom: { caption: 'Nueva', year: '1980', people: 'Ana, Luis', alt: 'nuevo', note: 'x' } });
+		expect(next).toEqual({
+			...photo,
+			caption: 'Nueva',
+			year: 1980,
+			people: ['Ana', 'Luis'],
+			extraContext: { alt: 'nuevo', note: 'x' }
+		});
+		expect(photo).toMatchObject({ caption: 'Vieja', year: 1975, extraContext: { alt: 'viejo' } });
+	});
+
+	it('empties the annotation and drops the extras when the photo has no context at all', () => {
+		for (const raw of [undefined, null, {}, { custom: {} }]) {
+			const next = withContext(photo, raw);
+			const { extraContext: _extras, ...rest } = photo;
+			expect(next).toEqual({ ...rest, caption: '', year: null, people: [] });
+			expect(next).not.toHaveProperty('extraContext');
+		}
+	});
+
+	it('keeps a year nobody can read among the extras', () => {
+		expect(withContext(photo, { year: 'circa 1975' })).toMatchObject({ year: null, extraContext: { year: 'circa 1975' } });
 	});
 });
 
