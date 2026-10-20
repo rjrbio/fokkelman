@@ -90,7 +90,13 @@ export const es = {
 		title: 'Fokkelman · Fotos',
 		heading: 'Fotos de la familia',
 		favoriteFailed: (publicId: string) =>
-			`No se pudo actualizar el favorito de ${publicId}. Inténtalo de nuevo.`
+			`No se pudo actualizar el favorito de ${publicId}. Inténtalo de nuevo.`,
+		annotateFailed: (photos: number) =>
+			photos === 1
+				? 'No se pudieron guardar los datos de la foto. Inténtalo de nuevo.'
+				: `No se pudieron guardar los datos de ${photos} fotos. Inténtalo de nuevo.`,
+		annotateTooManyPeople: 'Hay demasiadas personas en la foto: quita alguna e inténtalo de nuevo.',
+		annotateTooManyChanges: 'Son demasiados cambios a la vez. Hazlos en grupos más pequeños.'
 	}
 };
 

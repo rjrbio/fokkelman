@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { goto, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
+	import {
+		annotationFailure,
+		clearAnnotationOverrides,
+		withAnnotationOverrides
+	} from '$lib/annotate.svelte';
 	import PhotoGrid from '$lib/components/PhotoGrid.svelte';
 	import TopBar from '$lib/components/TopBar.svelte';
 	import UploadModal from '$lib/components/UploadModal.svelte';
@@ -14,7 +19,7 @@
 
 	let { data, children } = $props();
 
-	const photos = $derived(withFavoriteOverrides(data.photos));
+	const photos = $derived(withAnnotationOverrides(withFavoriteOverrides(data.photos)));
 	const filters = $derived(filtersFromSearchParams(page.url.searchParams));
 	const filtered = $derived(filterPhotos(photos, filters));
 
@@ -22,6 +27,7 @@
 	$effect(() => {
 		void data.fetchedAt;
 		clearFavoriteOverrides();
+		clearAnnotationOverrides();
 	});
 
 	// keepFocus: SvelteKit would otherwise blur the photo that was clicked, and the viewer could
@@ -65,11 +71,22 @@
 {@render children()}
 
 <!-- Lives here, not in the viewer: it must survive the viewer closing or changing photo. -->
-{#if favoriteFailure.publicId}
-	<p class="toast" role="alert">
-		{es.app.favoriteFailed(favoriteFailure.publicId)}
-	</p>
-{/if}
+<div class="toasts">
+	{#if favoriteFailure.publicId}
+		<p class="toast" role="alert">
+			{es.app.favoriteFailed(favoriteFailure.publicId)}
+		</p>
+	{/if}
+	{#if annotationFailure.problem}
+		<p class="toast" role="alert">
+			{annotationFailure.problem === 'too-many-people'
+				? es.app.annotateTooManyPeople
+				: annotationFailure.problem === 'too-many-calls'
+					? es.app.annotateTooManyChanges
+					: es.app.annotateFailed(annotationFailure.count)}
+		</p>
+	{/if}
+</div>
 
 <style>
 	@media (max-width: 720px) {
@@ -78,12 +95,19 @@
 			padding-bottom: calc(56px + env(safe-area-inset-bottom));
 		}
 	}
-	.toast {
+	.toasts {
 		position: fixed;
 		left: 50%;
 		bottom: 1.5rem;
 		transform: translateX(-50%);
 		z-index: 150; /* above the viewer overlay */
+		display: grid;
+		gap: 0.5rem;
+		justify-items: center;
+		width: max-content;
+		max-width: calc(100vw - 2rem);
+	}
+	.toast {
 		margin: 0;
 		padding: 0.6rem 1rem;
 		border-radius: 999px;
