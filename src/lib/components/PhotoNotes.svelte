@@ -73,10 +73,28 @@
 		}
 	}
 
+	/** Takes a name off the list and keeps the focus in the form: the button that had it is gone. */
+	async function removePerson(name: string) {
+		const at = people.indexOf(name);
+		people = people.filter((person) => person !== name);
+		await tick();
+		const buttons = form?.querySelectorAll<HTMLElement>('.remove') ?? [];
+		(buttons[Math.min(at, buttons.length - 1)] ?? personField)?.focus();
+	}
+
+	/** Cancel does nothing while a save is in flight (the button is not `disabled`, so it keeps the focus). */
+	function cancel() {
+		if (saving) return;
+		void stopEditing();
+	}
+
 	function onPersonInput(event: Event & { currentTarget: HTMLInputElement }) {
 		const value = event.currentTarget.value;
 		// Picking a name from the suggestions comes as a replacement, not as typing: it is a name already.
-		const picked = !(event instanceof InputEvent) || event.inputType === 'insertReplacementText';
+		// Autocorrect and spell checkers also come as replacements: only a name on offer counts as picked.
+		const picked =
+			(!(event instanceof InputEvent) || event.inputType === 'insertReplacementText') &&
+			available.some((name) => fold(name) === fold(cleanText(value)));
 		if (picked) {
 			addPeopleFrom(value);
 			pending = '';
@@ -99,7 +117,7 @@
 
 	/** Esc leaves the editor, not the viewer: the viewer leaves alone the keys pressed inside a form. */
 	function onKeydown(event: KeyboardEvent) {
-		if (event.key !== 'Escape' || !editing || !form?.contains(event.target as Node)) return;
+		if (event.key !== 'Escape' || !editing || saving || !form?.contains(event.target as Node)) return;
 		event.preventDefault();
 		void stopEditing();
 	}
@@ -215,7 +233,7 @@
 									type="button"
 									class="remove"
 									aria-label={m.removePerson(name)}
-									onclick={() => (people = people.filter((person) => person !== name))}>×</button
+									onclick={() => removePerson(name)}>×</button
 								>
 							</li>
 						{/each}
@@ -226,6 +244,9 @@
 					type="text"
 					list="notes-people"
 					autocomplete="off"
+					autocorrect="off"
+					spellcheck="false"
+					autocapitalize="words"
 					enterkeyhint="done"
 					placeholder={m.addPerson}
 					bind:this={personField}
@@ -245,10 +266,11 @@
 			</div>
 
 			<div class="buttons">
-				<button class="button primary" type="submit" disabled={saving}>
+				<!-- aria-disabled, not disabled: a disabled button drops the focus, and the keys would then act on the viewer. -->
+				<button class="button primary" type="submit" aria-disabled={saving}>
 					{saving ? m.saving : m.save}
 				</button>
-				<button class="button" type="button" disabled={saving} onclick={stopEditing}>{m.cancel}</button>
+				<button class="button" type="button" aria-disabled={saving} onclick={cancel}>{m.cancel}</button>
 			</div>
 		</form>
 	{/if}
@@ -368,7 +390,7 @@
 		background: var(--accent);
 		color: var(--on-accent);
 	}
-	.button:disabled {
+	.button[aria-disabled='true'] {
 		opacity: 0.6;
 		cursor: default;
 	}

@@ -166,6 +166,8 @@ test('when the save fails it takes the change back, says so, and lets the form b
 	await expect(page.getByRole('alert').filter({ hasText: 'No se pudieron guardar los datos de la foto' })).toBeVisible();
 	await expect(viewer.getByLabel('Descripción')).toHaveValue('No se guarda');
 	await expect(viewer.getByRole('button', { name: 'Guardar' })).toBeEnabled();
+	// The focus stayed where it was: the keys still go to the editor, not to the viewer behind it.
+	await expect(viewer.getByRole('button', { name: 'Guardar' })).toBeFocused();
 
 	await viewer.getByRole('button', { name: 'Cancelar' }).click();
 	await expect(viewer.getByText('Playa de Sitges')).toBeVisible();
@@ -183,4 +185,86 @@ test('does not ask the server when nothing changed', async ({ page }) => {
 
 	await expect(viewer.getByRole('button', { name: 'Editar', exact: true })).toBeFocused();
 	expect(asked).toBe(0);
+});
+
+const focusIsInsideTheForm = (page: Page) => page.evaluate(() => document.activeElement?.closest('form') != null);
+
+test('taking a person off keeps the focus in the editor, so Esc still leaves only the editor', async ({ page }) => {
+	const viewer = await openAndEdit(page);
+
+	await viewer.getByRole('button', { name: 'Quitar a Ana' }).click();
+	// The focus moves on to the next person's button instead of falling to the page.
+	await expect(viewer.getByRole('button', { name: 'Quitar a Luis' })).toBeFocused();
+	expect(await focusIsInsideTheForm(page)).toBe(true);
+
+	await page.keyboard.press('Escape');
+
+	await expect(viewer.getByRole('button', { name: 'Editar', exact: true })).toBeFocused();
+	await expect(viewerDialog(page)).toBeVisible();
+	await expect(page).toHaveURL(/\/app\/photo\/Sample_002$/);
+});
+
+test('taking off the last person sends the focus to the person field', async ({ page }) => {
+	const viewer = await openAndEdit(page);
+	await viewer.getByRole('button', { name: 'Quitar a Luis' }).click();
+	// Luis was the last one: the focus goes back to the one before.
+	await expect(viewer.getByRole('button', { name: 'Quitar a Ana' })).toBeFocused();
+
+	await viewer.getByRole('button', { name: 'Quitar a Ana' }).click();
+
+	await expect(viewer.getByLabel('Personas')).toBeFocused();
+	expect(await focusIsInsideTheForm(page)).toBe(true);
+});
+
+test('while a save is in flight the keys do not close the viewer or the editor, and it closes when the save ends', async ({ page }) => {
+	let release!: () => void;
+	const gate = new Promise<void>((resolve) => (release = resolve));
+	await page.route('**/api/annotate', async (route) => {
+		await gate;
+		await route.continue();
+	});
+	const viewer = await openAndEdit(page);
+	await viewer.getByLabel('Descripción').fill('Despacio');
+	await viewer.getByRole('button', { name: 'Guardar' }).click();
+
+	await expect(viewer.getByRole('button', { name: 'Guardando…' })).toBeFocused();
+	expect(await focusIsInsideTheForm(page)).toBe(true);
+
+	await page.keyboard.press('Escape');
+	await page.keyboard.press('ArrowRight');
+	await expect(viewerDialog(page)).toBeVisible();
+	await expect(viewer.getByLabel('Descripción')).toHaveValue('Despacio');
+	await expect(page).toHaveURL(/\/app\/photo\/Sample_002$/);
+
+	release();
+
+	await expect(viewer.getByRole('button', { name: 'Editar', exact: true })).toBeFocused();
+	await expect(viewer.getByText('Despacio')).toBeVisible();
+	expect(await storedContext('Sample_002')).toEqual({ caption: 'Despacio', people: 'Ana, Luis' });
+});
+
+test('a replacement that is not one of the suggestions (autocorrect) is not taken as a name that was picked', async ({ page }) => {
+	const viewer = await openAndEdit(page, 'Abrir Sample_001');
+
+	await page.evaluate(() => {
+		const input = document.querySelector<HTMLInputElement>('#notes-person')!;
+		input.value = 'Jose';
+		input.dispatchEvent(new InputEvent('input', { inputType: 'insertReplacementText', data: 'Jose', bubbles: true }));
+	});
+
+	await expect(viewer.getByLabel('Personas')).toHaveValue('Jose');
+	await expect(viewer.getByRole('listitem').filter({ hasText: 'Jose' })).toHaveCount(0);
+});
+
+test('a replacement that is one of the suggestions is a name that was picked, and is added at once', async ({ page }) => {
+	const viewer = await openAndEdit(page, 'Abrir Sample_001');
+
+	await page.evaluate(() => {
+		const input = document.querySelector<HTMLInputElement>('#notes-person')!;
+		input.value = 'Ana';
+		input.dispatchEvent(new InputEvent('input', { inputType: 'insertReplacementText', data: 'Ana', bubbles: true }));
+	});
+
+	await expect(viewer.getByRole('listitem').filter({ hasText: 'Ana' })).toHaveCount(1);
+	await expect(viewer.getByLabel('Personas')).toHaveValue('');
 });
