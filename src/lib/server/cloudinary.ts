@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Photo } from '$lib/types';
+import { noAnnotation } from '$lib/annotations';
 
 export interface CloudinaryConfig {
 	cloudName: string;
@@ -104,7 +105,8 @@ export async function searchAllPhotos(
 				format: r.format,
 				width: r.width,
 				height: r.height,
-				favorite: (r.tags ?? []).includes('favorite')
+				favorite: (r.tags ?? []).includes('favorite'),
+				...noAnnotation()
 			});
 		}
 		nextCursor = data.next_cursor;

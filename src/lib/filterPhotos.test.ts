@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { filterPhotos, filtersFromSearchParams, filtersToSearch, uniqueFolders } from './filterPhotos';
 import type { Photo } from './types';
+import { noAnnotation } from './annotations';
 
 const photo = (publicId: string, folder = '', favorite = false): Photo => ({
 	publicId,
@@ -8,7 +9,8 @@ const photo = (publicId: string, folder = '', favorite = false): Photo => ({
 	format: 'jpg',
 	width: 1,
 	height: 1,
-	favorite
+	favorite,
+	...noAnnotation()
 });
 
 const photos = [

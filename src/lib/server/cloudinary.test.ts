@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
+import { noAnnotation } from '$lib/annotations';
 import {
 	createUploadSignature,
 	searchAllPhotos,
@@ -95,8 +96,8 @@ describe('searchAllPhotos', () => {
 		const secondBody = JSON.parse(fetchFn.mock.calls[1][1].body as string);
 		expect(secondBody.next_cursor).toBe('cursor-2');
 		expect(photos).toEqual([
-			{ publicId: 'a1', folder: '', format: 'jpg', width: 10, height: 20, favorite: true },
-			{ publicId: 'demo/b2', folder: 'demo', format: 'png', width: 30, height: 40, favorite: false }
+			{ publicId: 'a1', folder: '', format: 'jpg', width: 10, height: 20, favorite: true, ...noAnnotation() },
+			{ publicId: 'demo/b2', folder: 'demo', format: 'png', width: 30, height: 40, favorite: false, ...noAnnotation() }
 		]);
 	});
 

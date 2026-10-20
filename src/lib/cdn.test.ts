@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { downloadUrl, fullUrl, thumbUrl, zoomUrl } from './cdn';
 import type { Photo } from './types';
+import { noAnnotation } from './annotations';
 
 const photo: Photo = {
 	publicId: 'family_uploads/abc123',
@@ -8,7 +9,8 @@ const photo: Photo = {
 	format: 'jpg',
 	width: 1200,
 	height: 800,
-	favorite: false
+	favorite: false,
+	...noAnnotation()
 };
 
 describe('cdn urls', () => {

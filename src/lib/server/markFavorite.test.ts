@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { noAnnotation } from '$lib/annotations';
 import type { Photo } from '$lib/types';
 
 const cloudinary = vi.hoisted(() => ({ searchAllPhotos: vi.fn(), setFavorite: vi.fn() }));
@@ -12,7 +13,8 @@ const photo = (publicId: string, favorite = false): Photo => ({
 	format: 'jpg',
 	width: 1,
 	height: 1,
-	favorite
+	favorite,
+	...noAnnotation()
 });
 
 beforeEach(() => {
