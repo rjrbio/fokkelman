@@ -154,6 +154,79 @@ export function applyPatch(
 	};
 }
 
+/** What the editor holds while somebody types: texts that have not been checked yet. */
+export interface Draft {
+	caption: string;
+	/** As typed; `''` for no year. */
+	year: string;
+	people: string[];
+}
+
+export type DraftField = 'caption' | 'year' | 'people';
+
+export type DraftResult =
+	| { ok: true; /** `null` when the draft says what the photo already has. */ patch: AnnotationPatch | null }
+	| { ok: false; field: DraftField; problem: PatchProblem };
+
+/**
+ * The patch that takes `current` to what the editor shows, or the first thing wrong with it and which
+ * field it is in. A name written with other accents or case than the one it replaces is a change too
+ * (the old one comes off and the new one goes on).
+ */
+export function patchFromDraft(
+	current: Annotation,
+	draft: Draft,
+	currentYear: number = new Date().getFullYear()
+): DraftResult {
+	const patch: AnnotationPatch = {};
+
+	const caption = cleanText(draft.caption);
+	if (caption !== current.caption) patch.caption = caption;
+
+	const yearText = draft.year.trim();
+	if (yearText === '') {
+		if (current.year !== null) patch.year = null;
+	} else if (!/^\d{4}$/.test(yearText)) {
+		return { ok: false, field: 'year', problem: 'year-out-of-range' };
+	} else if (Number(yearText) !== current.year) {
+		patch.year = Number(yearText);
+	}
+
+	const wanted: string[] = [];
+	const seen = new Set<string>();
+	for (const raw of draft.people) {
+		const name = cleanText(raw);
+		if (!name || seen.has(fold(name))) continue;
+		seen.add(fold(name));
+		wanted.push(name);
+	}
+	const addPeople = wanted.filter((name) => !current.people.includes(name));
+	const removePeople = current.people.filter((name) => !wanted.includes(name));
+	if (addPeople.length > 0) patch.addPeople = addPeople;
+	if (removePeople.length > 0) patch.removePeople = removePeople;
+
+	if (Object.keys(patch).length === 0) return { ok: true, patch: null };
+
+	// Each field on its own, to be able to say which one is wrong.
+	const parts: [DraftField, AnnotationPatch][] = [
+		['caption', { caption: patch.caption }],
+		['year', { year: patch.year }],
+		['people', { addPeople: patch.addPeople, removePeople: patch.removePeople }]
+	];
+	for (const [field, part] of parts) {
+		const present = Object.fromEntries(Object.entries(part).filter(([, value]) => value !== undefined));
+		if (Object.keys(present).length === 0) continue;
+		const checked = parsePatch(present, currentYear);
+		if (!checked.ok) return { ok: false, field, problem: checked.problem };
+	}
+
+	const parsed = parsePatch(patch, currentYear);
+	if (!parsed.ok) return { ok: false, field: 'people', problem: parsed.problem };
+	const applied = applyPatch(current, parsed.value);
+	if (!applied.ok) return { ok: false, field: 'people', problem: applied.problem };
+	return { ok: true, patch: parsed.value };
+}
+
 /** The photos with the given annotations laid over them (the same array when there is nothing to lay). */
 export function applyAnnotationOverrides<T extends Annotation & { publicId: string }>(
 	photos: T[],

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { downloadUrl } from '$lib/cdn';
 	import { getMessages } from '$lib/i18n';
 	import type { Photo } from '$lib/types';
@@ -11,7 +12,8 @@
 		position,
 		onClose,
 		onToggleFavorite,
-		onToggleFullscreen
+		onToggleFullscreen,
+		notes
 	}: {
 		photo: Photo;
 		cloudName: string;
@@ -20,6 +22,8 @@
 		onClose: () => void;
 		onToggleFavorite: () => void;
 		onToggleFullscreen: () => void;
+		/** What the page wants to show about the photo besides its file data (the family area puts the caption, year and people here). */
+		notes?: Snippet;
 	} = $props();
 
 	const m = getMessages().viewer;
@@ -48,6 +52,8 @@
 			{m.enterFullscreen}
 		</button>
 	</div>
+
+	{@render notes?.()}
 
 	<dl>
 		<dt>{m.file}</dt>
@@ -121,7 +127,7 @@
 	}
 	dl {
 		display: grid;
-		grid-template-columns: auto 1fr;
+		grid-template-columns: 5.5rem 1fr;
 		gap: 0.5rem 1rem;
 		margin: 0;
 		font-size: 0.9rem;

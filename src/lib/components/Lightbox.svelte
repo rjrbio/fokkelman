@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, type Snippet } from 'svelte';
 	import { fullUrl, thumbUrl, zoomUrl } from '$lib/cdn';
-	import { focusTrap, isTypingTarget, swallowNextClick } from '$lib/dom';
+	import { focusTrap, isInsideForm, isTypingTarget, swallowNextClick } from '$lib/dom';
 	import { getMessages } from '$lib/i18n';
 	import type { Photo } from '$lib/types';
 	import Icon from './Icon.svelte';
@@ -17,7 +17,8 @@
 		onClose,
 		onPrev,
 		onNext,
-		onToggleFavorite
+		onToggleFavorite,
+		notes
 	}: {
 		photo: Photo;
 		cloudName: string;
@@ -30,6 +31,8 @@
 		onPrev?: () => void;
 		onNext?: () => void;
 		onToggleFavorite: () => void;
+		/** Shown in the panel, under the buttons. */
+		notes?: Snippet;
 	} = $props();
 
 	const m = getMessages().viewer;
@@ -86,7 +89,7 @@
 	}
 
 	function onkeydown(e: KeyboardEvent) {
-		if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target)) return;
+		if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(e.target) || isInsideForm(e.target)) return;
 		if (e.key === 'Escape') {
 			if (immersive) void leaveImmersive();
 			else onClose();
@@ -167,6 +170,7 @@
 			{onClose}
 			{onToggleFavorite}
 			onToggleFullscreen={enterImmersive}
+			{notes}
 		/>
 	{/if}
 </div>

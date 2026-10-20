@@ -3,7 +3,9 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Lightbox from '$lib/components/Lightbox.svelte';
-	import { withAnnotationOverrides } from '$lib/annotate.svelte';
+	import PhotoNotes from '$lib/components/PhotoNotes.svelte';
+	import { saveAnnotation, withAnnotationOverrides } from '$lib/annotate.svelte';
+	import { knownPeople, type AnnotationPatch } from '$lib/annotations';
 	import { toggleFavorite, withFavoriteOverrides } from '$lib/favorites.svelte';
 	import { filterPhotos, filtersFromSearchParams, sortPhotos } from '$lib/filterPhotos';
 	import { es } from '$lib/messages';
@@ -31,6 +33,9 @@
 	const photo = $derived(index >= 0 ? list[index] : undefined);
 	const neighbours = $derived([list[index - 1], list[index + 1]].filter((p): p is Photo => Boolean(p)));
 
+	// Names already used anywhere in the library, to suggest them in the editor.
+	const people = $derived(knownPeople(withOverrides(page.data.photos as Photo[])));
+
 	// keepFocus everywhere: after a navigation SvelteKit moves the focus to the page, which would
 	// pull it out of the viewer (or off the photo the viewer must hand it back to).
 	function goTo(i: number) {
@@ -39,6 +44,23 @@
 			noScroll: true,
 			keepFocus: true
 		});
+	}
+
+	async function onSaveNotes(patch: AnnotationPatch) {
+		if (!photo) return 'failed' as const;
+		const outcome = await saveAnnotation([photo], patch, (publicIds, body) =>
+			fetch('/api/annotate', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ publicIds, patch: body }),
+				// Clearing a field takes two calls to Cloudinary: give it longer than a favorite.
+				signal: AbortSignal.timeout(30000)
+			})
+		);
+		if (outcome === 'unauthorized') {
+			await goto(`/login?next=${encodeURIComponent(page.url.pathname + page.url.search)}`);
+		}
+		return outcome;
 	}
 
 	async function onToggleFavorite() {
@@ -69,7 +91,14 @@
 		onPrev={index > 0 ? () => goTo(index - 1) : undefined}
 		onNext={index < list.length - 1 ? () => goTo(index + 1) : undefined}
 		{onToggleFavorite}
-	/>
+	>
+		{#snippet notes()}
+			<!-- Keyed: another photo starts with its own, closed, editor. -->
+			{#key photo.publicId}
+				<PhotoNotes {photo} suggestions={people} onSave={onSaveNotes} />
+			{/key}
+		{/snippet}
+	</Lightbox>
 {:else}
 	<div class="missing">
 		<p>{m.notFound}</p>

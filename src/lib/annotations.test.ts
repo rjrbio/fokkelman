@@ -11,6 +11,7 @@ import {
 	MAX_PERSON_LENGTH,
 	noAnnotation,
 	parsePatch,
+	patchFromDraft,
 	sameAnnotation,
 	type Annotation
 } from './annotations';
@@ -191,6 +192,95 @@ describe('sameAnnotation and annotationOf', () => {
 	it('starts empty', () => {
 		expect(noAnnotation()).toEqual({ caption: '', year: null, people: [] });
 		expect(noAnnotation().people).not.toBe(noAnnotation().people);
+	});
+});
+
+describe('patchFromDraft', () => {
+	const current = { caption: 'Playa', year: 1975, people: ['Ana', 'Luis'] };
+	const same = { caption: 'Playa', year: '1975', people: ['Ana', 'Luis'] };
+	const patchOf = (draft: Partial<typeof same>) => patchFromDraft(current, { ...same, ...draft }, NOW);
+
+	it('has nothing to send when the draft says what the photo already has', () => {
+		expect(patchOf({})).toEqual({ ok: true, patch: null });
+		expect(patchOf({ caption: '  Playa ', year: ' 1975 ', people: [' Ana', 'Luis  '] })).toEqual({ ok: true, patch: null });
+		// The same person twice is one person.
+		expect(patchOf({ people: ['Ana', 'ana', 'Luis'] })).toEqual({ ok: true, patch: null });
+	});
+
+	it('sends the caption when it changes, and an empty one to clear it', () => {
+		expect(patchOf({ caption: 'Playa de Sitges' })).toEqual({ ok: true, patch: { caption: 'Playa de Sitges' } });
+		expect(patchOf({ caption: '   ' })).toEqual({ ok: true, patch: { caption: '' } });
+	});
+
+	it('sends the year when it changes, and null to clear it', () => {
+		expect(patchOf({ year: '1980' })).toEqual({ ok: true, patch: { year: 1980 } });
+		expect(patchOf({ year: '' })).toEqual({ ok: true, patch: { year: null } });
+		expect(patchFromDraft(noAnnotation(), { caption: '', year: '', people: [] }, NOW)).toEqual({ ok: true, patch: null });
+	});
+
+	it('sends the people that were added and the ones that were taken off', () => {
+		expect(patchOf({ people: ['Ana', 'Marta'] })).toEqual({
+			ok: true,
+			patch: { addPeople: ['Marta'], removePeople: ['Luis'] }
+		});
+		expect(patchOf({ people: [] })).toEqual({ ok: true, patch: { removePeople: ['Ana', 'Luis'] } });
+	});
+
+	it('sees a name with other accents as another name, which replaces the old one', () => {
+		const result = patchFromDraft({ caption: '', year: null, people: ['Maria'] }, { caption: '', year: '', people: ['María'] }, NOW);
+		expect(result).toEqual({ ok: true, patch: { addPeople: ['María'], removePeople: ['Maria'] } });
+		expect(result.ok && applyPatch(note('', null, ['Maria']), result.patch!)).toEqual({
+			ok: true,
+			annotation: note('', null, ['María'])
+		});
+	});
+
+	it('sends everything that changed at once', () => {
+		expect(patchOf({ caption: 'Boda', year: '1980', people: ['Ana'] })).toEqual({
+			ok: true,
+			patch: { caption: 'Boda', year: 1980, removePeople: ['Luis'] }
+		});
+	});
+
+	it('says which field is wrong', () => {
+		expect(patchOf({ year: 'abc' })).toEqual({ ok: false, field: 'year', problem: 'year-out-of-range' });
+		expect(patchOf({ year: '75' })).toEqual({ ok: false, field: 'year', problem: 'year-out-of-range' });
+		expect(patchOf({ year: '1500' })).toEqual({ ok: false, field: 'year', problem: 'year-out-of-range' });
+		expect(patchOf({ year: String(NOW + 1) })).toEqual({ ok: false, field: 'year', problem: 'year-out-of-range' });
+		expect(patchOf({ caption: 'x'.repeat(MAX_CAPTION_LENGTH + 1) })).toEqual({ ok: false, field: 'caption', problem: 'caption-too-long' });
+		expect(patchOf({ caption: 'a\\b' })).toEqual({ ok: false, field: 'caption', problem: 'has-backslash' });
+		expect(patchOf({ people: ['Ana', 'Luis', 'x'.repeat(MAX_PERSON_LENGTH + 1)] })).toEqual({
+			ok: false,
+			field: 'people',
+			problem: 'person-too-long'
+		});
+	});
+
+	it('reports the caption first when more than one field has a problem', () => {
+		expect(patchOf({ caption: 'x'.repeat(256), people: ['x'.repeat(41)] })).toMatchObject({ field: 'caption' });
+	});
+
+	it('spells a name that changes only in case as a replacement', () => {
+		expect(patchOf({ people: ['ana', 'Luis'] })).toEqual({
+			ok: true,
+			patch: { addPeople: ['ana'], removePeople: ['Ana'] }
+		});
+	});
+
+	it('refuses a list of people that does not fit in what Cloudinary keeps', () => {
+		const crowd = Array.from({ length: 8 }, (_, i) => `${'N'.repeat(30)}${i}`);
+		expect(patchFromDraft(noAnnotation(), { caption: '', year: '', people: crowd }, NOW)).toEqual({
+			ok: false,
+			field: 'people',
+			problem: 'too-many-people'
+		});
+	});
+
+	it('leaves a year that was already out of range alone when the draft keeps it', () => {
+		expect(patchFromDraft({ caption: '', year: 1700, people: [] }, { caption: 'x', year: '1700', people: [] }, NOW)).toEqual({
+			ok: true,
+			patch: { caption: 'x' }
+		});
 	});
 });
 

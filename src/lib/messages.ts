@@ -86,6 +86,31 @@ export const es = {
 		uploading: 'Subiendo…',
 		close: 'Cerrar'
 	},
+	notes: {
+		heading: 'Datos de la foto',
+		caption: 'Descripción',
+		noCaption: 'Sin descripción',
+		year: 'Año',
+		noYear: 'Sin año',
+		people: 'Personas',
+		noPeople: 'Sin personas',
+		edit: 'Editar',
+		save: 'Guardar',
+		saving: 'Guardando…',
+		cancel: 'Cancelar',
+		yearHint: 'Por ejemplo, 1975',
+		addPerson: 'Añadir persona',
+		addPersonHint: 'Escribe un nombre y pulsa Intro',
+		removePerson: (name: string) => `Quitar a ${name}`,
+		problem: {
+			captionTooLong: (max: number) => `La descripción no puede pasar de ${max} caracteres.`,
+			hasBackslash: 'No se puede usar la barra invertida (\\).',
+			year: (min: number, max: number) => `El año tiene que ser un número de cuatro cifras entre ${min} y ${max}.`,
+			personTooLong: (max: number) => `Un nombre no puede pasar de ${max} caracteres.`,
+			tooManyPeople: 'Hay demasiadas personas en la foto: quita alguna.',
+			other: 'Revisa los datos de la foto.'
+		}
+	},
 	app: {
 		title: 'Fokkelman · Fotos',
 		heading: 'Fotos de la familia',

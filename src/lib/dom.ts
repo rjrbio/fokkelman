@@ -16,6 +16,11 @@ export function isTypingTarget(target: EventTarget | null): boolean {
 	);
 }
 
+/** True when a key press happened inside a form: the keys are for filling it in, not for the page around it. */
+export function isInsideForm(target: EventTarget | null): boolean {
+	return target instanceof Element && target.closest('form') !== null;
+}
+
 /** The modals that are open, the last one on top: only that one traps the focus. */
 const traps: HTMLElement[] = [];
 
