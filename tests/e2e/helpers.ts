@@ -68,3 +68,12 @@ export async function expectNoA11yViolations(page: Page): Promise<void> {
 	);
 	expect(report, report.join('\n')).toEqual([]);
 }
+
+/** What the Cloudinary mock has stored as the context of a photo (`undefined` when it has none). */
+export async function storedContext(publicId: string): Promise<Record<string, string> | undefined> {
+	const state = (await (await fetch('http://127.0.0.1:9966/__state')).json()) as {
+		family: { public_id: string; context?: Record<string, string> }[];
+	};
+	const context = state.family.find((photo) => photo.public_id === publicId)?.context;
+	return context && Object.keys(context).length > 0 ? context : undefined;
+}

@@ -1,4 +1,7 @@
 import { env } from '$env/dynamic/private';
+import type { Annotation, AnnotationPatch } from '$lib/annotations';
+import type { Photo } from '$lib/types';
+import { planAnnotation, withChange, writeOperations } from './annotate';
 import { searchAllPhotos, setFavorite, type CloudinaryConfig } from './cloudinary';
 import { createIndexCache, withFavorite } from './photoIndex';
 
@@ -39,6 +42,55 @@ export async function markFavorite(
 	await setFavorite(cloudinaryConfig(), publicId, favorite);
 	familyCache.patch((all) => withFavorite(all, publicId, favorite));
 	return 'ok';
+}
+
+export type AnnotateOutcome =
+	| { status: 'unknown-photo' }
+	| { status: 'rejected'; problem: 'too-many-people' | 'too-many-calls' }
+	| {
+			status: 'done';
+			/** The photos that were written, with the annotation they have now. */
+			updated: { publicId: string; annotation: Annotation }[];
+			/** The photos where Cloudinary failed; the family index is reloaded the next time it is read. */
+			failed: string[];
+	  };
+
+/**
+ * Applies a patch to family photos and patches the cached index with what was really written.
+ * The patch is merged with what the server knows of each photo (so adding a person keeps the ones
+ * somebody else added); it refuses ids that are not in the family index, the demo folder included.
+ */
+export async function annotatePhotos(
+	publicIds: string[],
+	patch: AnnotationPatch
+): Promise<AnnotateOutcome> {
+	const { photos } = await getFamilyIndex();
+	const byId = new Map(photos.map((photo) => [photo.publicId, photo]));
+	const targets: Photo[] = [];
+	for (const id of publicIds) {
+		const photo = byId.get(id);
+		if (!photo) return { status: 'unknown-photo' };
+		targets.push(photo);
+	}
+
+	const plan = planAnnotation(targets, patch);
+	if (!plan.ok) return { status: 'rejected', problem: plan.problem };
+
+	const { done, failed } = await writeOperations(cloudinaryConfig(), plan.operations);
+	const written = new Map(plan.changes.filter((c) => done.includes(c.publicId)).map((c) => [c.publicId, c]));
+	familyCache.patch((all) =>
+		all.map((photo) => {
+			const change = written.get(photo.publicId);
+			return change ? withChange(photo, change) : photo;
+		})
+	);
+	if (failed.length > 0) familyCache.invalidate();
+
+	return {
+		status: 'done',
+		updated: [...written.values()].map((c) => ({ publicId: c.publicId, annotation: c.after })),
+		failed
+	};
 }
 
 /**
