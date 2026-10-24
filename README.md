@@ -112,15 +112,59 @@ de la paleta los fija `src/lib/tokens.test.ts`.
   una lectura, `remove_all` y `add`; si algo falla después de enviar `remove_all`,
   se anota en el log qué contenía y se intenta devolverlo. Cada llamada a
   Cloudinary tiene un tiempo máximo de 3 s, y una petición no empieza más grupos
-  de escritura pasados 6 s. Las fotos cuyo texto ya escrito lleva una barra
-  invertida (`\`) no se reescriben (Cloudinary no documenta cómo se guarda) y se
-  avisan como fallidas; tampoco se escribe una foto cuyo `context` actual llega
-  completamente vacío mientras el índice sí tiene datos de ella (podría ser una
-  lectura que omite el `context`, y escribir encima borraría lo que hay): se
-  avisa como fallida y se recarga el índice. En el navegador el cambio se ve al
-  momento y se deshace con un aviso si falla (`src/lib/annotate.svelte.ts`). La
-  galería se ordena por año (sin año al final) y el buscador mira descripción,
-  personas, año y nombre de archivo, sin distinguir mayúsculas ni acentos.
+  de escritura pasados 8 s desde que llegó (la lectura previa cuenta). Las fotos
+  cuyo texto ya escrito lleva una barra invertida (`\`) no se reescriben
+  (Cloudinary no documenta cómo se guarda) y se avisan como fallidas; tampoco se
+  escribe una foto cuyo `context` actual llega completamente vacío mientras el
+  índice sí tiene datos de ella (podría ser una lectura que omite el `context`,
+  y escribir encima borraría lo que hay): se avisa como fallida y se recarga el
+  índice. En el navegador el cambio se ve al momento y se deshace con un aviso
+  si falla (`src/lib/annotate.svelte.ts`). La galería se ordena por año (sin año
+  al final) y el buscador mira descripción, personas, año y nombre de archivo,
+  sin distinguir mayúsculas ni acentos.
+- Filtros y selección: además de la colección, las favoritas y el buscador, la
+  galería se filtra por persona, por década (con "Sin fecha") y por "Sin
+  identificar" (sin año y sin personas). Todo va en la dirección (`persona`,
+  `decada`, `sin`), así que se puede compartir y sobrevive a recargar
+  (`src/lib/filterPhotos.ts`). Se eligen fotos con la casilla de cada una o, en
+  pantalla táctil, con una pulsación larga (`src/lib/selection.svelte.ts`);
+  mientras haya alguna elegida, un toque en una foto la elige en vez de abrirla,
+  y la barra de arriba pasa a ser la de la selección (`Año…`, `Personas…`,
+  `Descripción…`, marcar como favoritas (o quitarlas, si todas lo son ya),
+  seleccionar las N y cancelar, también con Esc). La selección se olvida al
+  cambiar de búsqueda o filtro y al aplicar una edición. Con `Sin identificar`
+  activo aparece el atajo "Seleccionar las N sin identificar".
+- Edición masiva: los diálogos de la barra ponen el mismo año, descripción o
+  personas (añadir y quitar) a todas las fotos elegidas con `POST /api/annotate`.
+  El servidor admite 200 fotos por petición, así que el navegador las manda en
+  grupos de 200, uno detrás de otro, y cuenta los fallos de todos los grupos en
+  un solo aviso (`saveAnnotationInBatches`). Como Netlify corta una función a los
+  10 s más o menos, el servidor reparte un presupuesto de 8 s por petición
+  (`REQUEST_BUDGET_MS`) entre leer y escribir: lo que tarda la lectura no está
+  disponible para escribir, y los grupos que no llegan a empezar se avisan como
+  fallidos. Marcar favoritas va por `POST /api/favorites` (200 fotos por
+  petición, que el servidor pasa a Cloudinary de 100 en 100).
+- Subida con datos: el diálogo de subir pide una colección y, si se quiere, una
+  descripción, un año y personas, los mismos para todas las fotos de la subida.
+  El servidor los revisa como una edición y construye él el `context`, que firma
+  junto con la carpeta (`POST /api/upload-signature`): el navegador manda
+  exactamente ese `context`, nunca uno suyo. Las fotos de más de 10 MB se
+  descartan antes de enviarlas y se suben de dos en dos
+  (`src/lib/uploadFiles.ts`).
+- Compartir: en el visor, `Compartir` manda la foto (la de 1600 px, no el
+  original) como archivo en los dispositivos que pueden (se descarga un momento
+  después de abrir la foto, para que al pulsar no haya que esperar), y si no, el
+  enlace `/app/photo/<id>` por la hoja de compartir o copiado al portapapeles
+  (pide la contraseña familiar a quien lo reciba). Para leer la imagen, la CSP
+  permite `connect-src` hacia `res.cloudinary.com`. La demo pública no tiene
+  botón de compartir.
+- Cuota de Cloudinary: la búsqueda y la lectura de contextos (Admin API,
+  500 llamadas por hora en el plan gratuito) leen las cabeceras
+  `X-FeatureRateLimit-*`: avisan en el log (como mucho una vez por minuto) cuando
+  quedan 50 o menos, y si se agota (420 o 429) dan un error claro: la página de
+  error dice que Cloudinary ha llegado a su límite (si hay copia en caché se
+  sigue enseñando esa), y un guardado lo dice en su aviso
+  (`src/lib/server/quota.ts`).
 - Idioma: la zona familiar (`/app`, `/login`) está en español y la landing y la
   demo en inglés. Los textos de la interfaz (familia, error, rejilla, visor,
   demo) están en `src/lib/messages.ts`; la landing tiene su texto en la propia
