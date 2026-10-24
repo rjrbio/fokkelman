@@ -1,12 +1,15 @@
 <script lang="ts">
 	import { es } from '$lib/messages';
+	import Icon from './Icon.svelte';
 
 	let {
 		count,
 		total,
 		onSelectAll,
 		onClear,
-		onBulk
+		onBulk,
+		allFavorite,
+		onFavorite
 	}: {
 		/** How many photos are picked. */
 		count: number;
@@ -16,6 +19,9 @@
 		onClear: () => void;
 		/** Opens the dialog that sets a year, people or a description for everything picked. */
 		onBulk: (mode: 'year' | 'people' | 'caption') => void;
+		/** Every photo picked is a favorite already, so the button takes the favorite off instead. */
+		allFavorite: boolean;
+		onFavorite: () => void;
 	} = $props();
 
 	const m = es.selection;
@@ -40,6 +46,10 @@
 		<button class="pill" aria-haspopup="dialog" onclick={() => onBulk('year')}>{m.year}</button>
 		<button class="pill" aria-haspopup="dialog" onclick={() => onBulk('people')}>{m.people}</button>
 		<button class="pill" aria-haspopup="dialog" onclick={() => onBulk('caption')}>{m.caption}</button>
+		<button class="pill" onclick={onFavorite}>
+			<Icon name="star" filled={allFavorite} size={16} />
+			{allFavorite ? m.unfavorite : m.favorite}
+		</button>
 		<button class="pill clear" onclick={onClear}>{m.clear}</button>
 	</div>
 </header>
@@ -67,6 +77,7 @@
 	.pill {
 		display: inline-flex;
 		align-items: center;
+		gap: 0.4rem;
 		min-height: 44px;
 		padding: 0 1rem;
 		border: 1px solid var(--line);

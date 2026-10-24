@@ -133,6 +133,35 @@ export async function getContexts(cfg: CloudinaryConfig, publicIds: string[]): P
 	return contexts;
 }
 
+/**
+ * Tags (or un-tags) up to 100 photos as favorites with one call. The ids go as an array (`public_ids[]`)
+ * and are signed comma-joined, the way Cloudinary's own SDKs do it, like the context call does.
+ */
+export async function setFavorites(
+	cfg: CloudinaryConfig,
+	publicIds: string[],
+	favorite: boolean
+): Promise<void> {
+	const timestamp = Math.floor(Date.now() / 1000);
+	const command = favorite ? 'add' : 'remove';
+	const body = new URLSearchParams();
+	body.set('command', command);
+	for (const id of publicIds) body.append('public_ids[]', id);
+	body.set('tag', 'favorite');
+	body.set('timestamp', String(timestamp));
+	body.set('api_key', cfg.apiKey);
+	body.set(
+		'signature',
+		signParams({ command, public_ids: publicIds.join(','), tag: 'favorite', timestamp }, cfg.apiSecret)
+	);
+	const res = await cfg.fetchFn(`${cfg.apiBase}/v1_1/${cfg.cloudName}/image/tags`, {
+		method: 'POST',
+		body,
+		signal: AbortSignal.timeout(CONTEXT_CALL_TIMEOUT_MS)
+	});
+	if (!res.ok) throw new Error(`Cloudinary tags API failed: ${res.status}`);
+}
+
 interface SearchResource {
 	public_id: string;
 	folder?: string;

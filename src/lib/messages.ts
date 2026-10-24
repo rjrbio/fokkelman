@@ -105,7 +105,9 @@ export const es = {
 		clear: 'Cancelar selección',
 		year: 'Año…',
 		people: 'Personas…',
-		caption: 'Descripción…'
+		caption: 'Descripción…',
+		favorite: 'Marcar como favoritas',
+		unfavorite: 'Quitar de favoritas'
 	},
 	bulk: {
 		title: (n: number) => `Editar ${photosEs(n)}`,
@@ -167,6 +169,8 @@ export const es = {
 		heading: 'Fotos de la familia',
 		favoriteFailed: (publicId: string) =>
 			`No se pudo actualizar el favorito de ${publicId}. Inténtalo de nuevo.`,
+		favoritesFailed: (photos: number) =>
+			`No se pudo actualizar el favorito de ${photos} fotos. Inténtalo de nuevo.`,
 		annotateFailed: (photos: number) =>
 			photos === 1
 				? 'No se pudieron guardar los datos de la foto. Inténtalo de nuevo.'

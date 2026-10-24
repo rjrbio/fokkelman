@@ -162,7 +162,13 @@ const server = createServer(async (req, res) => {
 
 	if (req.url?.endsWith('/image/tags')) {
 		const params = new URLSearchParams(body);
-		const ids = (params.get('public_ids') ?? '').split(',');
+		if (!signatureIsValid(params)) {
+			res.statusCode = 400;
+			res.end(JSON.stringify({ error: { message: 'Invalid Signature' } }));
+			return;
+		}
+		// One photo goes as `public_ids=a`, many as `public_ids[]=a&public_ids[]=b`.
+		const ids = params.has('public_ids') ? params.get('public_ids').split(',') : params.getAll('public_ids[]');
 		const command = params.get('command');
 		const tag = params.get('tag');
 		for (const photo of [...state.family, ...state.demo]) {

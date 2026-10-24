@@ -14,9 +14,11 @@
 	import SelectionBar from '$lib/components/SelectionBar.svelte';
 	import TopBar from '$lib/components/TopBar.svelte';
 	import UploadModal from '$lib/components/UploadModal.svelte';
+	import { postFavorites } from '$lib/favoritesApi';
 	import {
 		clearFavoriteOverrides,
 		favoriteFailure,
+		setFavorites,
 		withFavoriteOverrides
 	} from '$lib/favorites.svelte';
 	import { knownPeople, type AnnotationPatch } from '$lib/annotations';
@@ -61,6 +63,15 @@
 	let bulkMode = $state<'year' | 'caption' | 'people' | null>(null);
 	const pickedPhotos = $derived(photos.filter((p) => selected.has(p.publicId)));
 
+	const allPickedAreFavorite = $derived(pickedPhotos.length > 0 && pickedPhotos.every((p) => p.favorite));
+
+	async function favoritePicked() {
+		const outcome = await setFavorites(pickedPhotos, !allPickedAreFavorite, postFavorites);
+		if (outcome === 'unauthorized') {
+			await goto(`/login?next=${encodeURIComponent(page.url.pathname + page.url.search)}`);
+		}
+	}
+
 	async function applyBulk(
 		patch: AnnotationPatch,
 		onProgress: (done: number, total: number) => void
@@ -87,6 +98,8 @@
 		onSelectAll={() => selectMany(filtered.map((p) => p.publicId))}
 		onClear={clearSelection}
 		onBulk={(mode) => (bulkMode = mode)}
+		allFavorite={allPickedAreFavorite}
+		onFavorite={favoritePicked}
 	/>
 {:else}
 	<TopBar
@@ -142,7 +155,9 @@
 <div class="toasts">
 	{#if favoriteFailure.publicId}
 		<p class="toast" role="alert">
-			{es.app.favoriteFailed(favoriteFailure.publicId)}
+			{favoriteFailure.count > 1
+				? es.app.favoritesFailed(favoriteFailure.count)
+				: es.app.favoriteFailed(favoriteFailure.publicId)}
 		</p>
 	{/if}
 	{#if annotationFailure.problem}

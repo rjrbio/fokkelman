@@ -9,7 +9,7 @@ import {
 	withChange,
 	writeOperations
 } from './annotate';
-import { getContexts, searchAllPhotos, setFavorite, type CloudinaryConfig } from './cloudinary';
+import { getContexts, searchAllPhotos, setFavorite, setFavorites, type CloudinaryConfig } from './cloudinary';
 import { withContext } from './context';
 import { createIndexCache, withFavorite } from './photoIndex';
 
@@ -50,6 +50,38 @@ export async function markFavorite(
 	await setFavorite(cloudinaryConfig(), publicId, favorite);
 	familyCache.patch((all) => withFavorite(all, publicId, favorite));
 	return 'ok';
+}
+
+export type FavoritesOutcome =
+	| { status: 'unknown-photo' }
+	| { status: 'done'; done: string[]; failed: string[] };
+
+/**
+ * Marks (or unmarks) many family photos as favorites, 100 to a call. A call that fails does not stop the
+ * others: its photos come back in `failed` and the cached index is reloaded the next time it is read.
+ * Like `markFavorite`, it refuses ids that are not in the family index, the demo folder included.
+ */
+export async function markFavorites(publicIds: string[], favorite: boolean): Promise<FavoritesOutcome> {
+	const { photos } = await getFamilyIndex();
+	const known = new Set(photos.map((photo) => photo.publicId));
+	if (publicIds.some((id) => !known.has(id))) return { status: 'unknown-photo' };
+
+	const cfg = cloudinaryConfig();
+	const done: string[] = [];
+	const failed: string[] = [];
+	for (const ids of chunks(publicIds, CONTEXT_BATCH)) {
+		try {
+			await setFavorites(cfg, ids, favorite);
+			done.push(...ids);
+		} catch (err) {
+			console.error('[favorites] could not change the favorites of', ids.join(', '), err);
+			failed.push(...ids);
+		}
+	}
+	const changed = new Set(done);
+	familyCache.patch((all) => all.map((photo) => (changed.has(photo.publicId) ? { ...photo, favorite } : photo)));
+	if (failed.length > 0) familyCache.invalidate();
+	return { status: 'done', done, failed };
 }
 
 /** No caption, no year, no people and no other keys: what a photo without context looks like. */

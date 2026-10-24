@@ -4,6 +4,7 @@ import {
 	dismissFavoriteFailure,
 	FAVORITE_FAILURE_MS,
 	favoriteFailure,
+	setFavorites,
 	toggleFavorite,
 	withFavoriteOverrides
 } from './favorites.svelte';
@@ -149,5 +150,101 @@ describe('favoriteFailure', () => {
 	it('is not set by an expired session, which redirects instead', async () => {
 		expect(await toggleFavorite(photo('a'), status(401))).toBe('unauthorized');
 		expect(favoriteFailure.publicId).toBeNull();
+	});
+});
+
+describe('setFavorites', () => {
+	const crowd = (n: number, favorite = false) => Array.from({ length: n }, (_, i) => photo(`p${i}`, favorite));
+	const allOk = (ids: string[]) => Promise.resolve(Response.json({ done: ids, failed: [] }));
+
+	it('changes them all right away and keeps them once the server confirms', async () => {
+		const base = crowd(3);
+		let release!: (r: Response) => void;
+		const send = vi.fn(() => new Promise<Response>((resolve) => (release = resolve)));
+
+		const pending = setFavorites(base, true, send);
+		expect(base.map((p) => favoriteOf(p.publicId, base))).toEqual([true, true, true]); // before the answer
+		release(Response.json({ done: ['p0', 'p1', 'p2'], failed: [] }));
+
+		expect(await pending).toBe('done');
+		expect(send).toHaveBeenCalledWith(['p0', 'p1', 'p2'], true);
+		expect(base.map((p) => favoriteOf(p.publicId, base))).toEqual([true, true, true]);
+	});
+
+	it('leaves alone the photos that already are as asked, and asks nothing when all are', async () => {
+		const base = [photo('a', true), photo('b')];
+		const send = vi.fn(allOk);
+
+		await setFavorites(base, true, send);
+		expect(send).toHaveBeenCalledWith(['b'], true);
+
+		send.mockClear();
+		expect(await setFavorites([photo('a', true)], true, send)).toBe('done');
+		expect(send).not.toHaveBeenCalled();
+	});
+
+	it('sends them 200 at a time', async () => {
+		const sent: number[] = [];
+		const send = async (ids: string[]) => {
+			sent.push(ids.length);
+			return Response.json({ done: ids, failed: [] });
+		};
+		await setFavorites(crowd(450), true, send);
+		expect(sent).toEqual([200, 200, 50]);
+	});
+
+	it('takes back the photos the server did not change, and says how many, once', async () => {
+		const base = crowd(3);
+		const send = async () => Response.json({ done: ['p0'], failed: ['p1', 'p2'] });
+
+		expect(await setFavorites(base, true, send)).toBe('failed');
+
+		expect(base.map((p) => favoriteOf(p.publicId, base))).toEqual([true, false, false]);
+		expect(favoriteFailure).toEqual({ publicId: 'p1', count: 2 });
+	});
+
+	it('takes back a whole group when its request fails, and keeps the others', async () => {
+		let call = 0;
+		const base = crowd(450);
+		const send = async (ids: string[]) => (++call === 2 ? new Response(null, { status: 500 }) : Response.json({ done: ids, failed: [] }));
+
+		expect(await setFavorites(base, true, send)).toBe('failed');
+
+		expect(favoriteOf('p0', base)).toBe(true);
+		expect(favoriteOf('p250', base)).toBe(false);
+		expect(favoriteOf('p449', base)).toBe(true);
+		expect(favoriteFailure.count).toBe(200);
+	});
+
+	it('takes everything back when the network fails', async () => {
+		const base = crowd(2);
+		expect(await setFavorites(base, true, () => Promise.reject(new Error('offline')))).toBe('failed');
+		expect(base.map((p) => favoriteOf(p.publicId, base))).toEqual([false, false]);
+	});
+
+	it('stops at an expired session, taking back what it had not saved and keeping what it had', async () => {
+		let call = 0;
+		const base = crowd(450);
+		const send = async (ids: string[]) => (++call === 2 ? new Response(null, { status: 401 }) : Response.json({ done: ids, failed: [] }));
+
+		expect(await setFavorites(base, true, send)).toBe('unauthorized');
+
+		expect(call).toBe(2);
+		expect(favoriteOf('p0', base)).toBe(true);
+		expect(favoriteOf('p250', base)).toBe(false);
+		expect(favoriteOf('p449', base)).toBe(false);
+		expect(favoriteFailure.publicId).toBeNull();
+	});
+
+	it('ignores a photo that has a change in flight', async () => {
+		const base = crowd(2);
+		let release!: (r: Response) => void;
+		const slow = vi.fn(() => new Promise<Response>((resolve) => (release = resolve)));
+		const first = toggleFavorite(base[0], slow);
+
+		expect(await setFavorites(base, true, vi.fn())).toBe('busy');
+
+		release(new Response(null, { status: 204 }));
+		await first;
 	});
 });

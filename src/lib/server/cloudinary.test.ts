@@ -7,6 +7,7 @@ import {
 	getContexts,
 	searchAllPhotos,
 	setFavorite,
+	setFavorites,
 	signParams,
 	updateContext,
 	type CloudinaryConfig
@@ -72,6 +73,39 @@ describe('setFavorite', () => {
 		).rejects.toThrow('Cloudinary tags API failed: 500');
 		const body = fetchFn.mock.calls[0][1].body as URLSearchParams;
 		expect(body.get('command')).toBe('remove');
+	});
+});
+
+describe('setFavorites', () => {
+	const sha1 = (text: string) => createHash('sha1').update(text).digest('hex');
+
+	afterEach(() => vi.useRealTimers());
+
+	it('tags many photos with one call: the ids as an array, signed comma-joined, with a time limit', async () => {
+		vi.useFakeTimers().setSystemTime(1_700_000_000_000);
+		const fetchFn = vi.fn().mockResolvedValue(jsonResponse({}));
+
+		await setFavorites(makeConfig(fetchFn as typeof fetch), ['a', 'b/c'], true);
+
+		const [url, init] = fetchFn.mock.calls[0];
+		expect(url).toBe('https://api.example/v1_1/testcloud/image/tags');
+		const body = init.body as URLSearchParams;
+		expect(body.getAll('public_ids[]')).toEqual(['a', 'b/c']);
+		expect(body.get('command')).toBe('add');
+		expect(body.get('tag')).toBe('favorite');
+		expect(body.get('api_key')).toBe('key123');
+		expect(body.get('signature')).toBe(
+			sha1('command=add&public_ids=a,b/c&tag=favorite&timestamp=1700000000secret123')
+		);
+		expect(init.signal).toBeInstanceOf(AbortSignal);
+	});
+
+	it('removes the tag when favorite is false, and throws on HTTP error', async () => {
+		const fetchFn = vi.fn().mockResolvedValue(jsonResponse({}, 500));
+		await expect(setFavorites(makeConfig(fetchFn as typeof fetch), ['a'], false)).rejects.toThrow(
+			'Cloudinary tags API failed: 500'
+		);
+		expect((fetchFn.mock.calls[0][1].body as URLSearchParams).get('command')).toBe('remove');
 	});
 });
 

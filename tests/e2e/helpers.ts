@@ -95,6 +95,14 @@ export async function storedContext(publicId: string): Promise<Record<string, st
 	return context && Object.keys(context).length > 0 ? context : undefined;
 }
 
+/** The ids of the photos the Cloudinary mock has tagged as favorites, in the order the mock has them. */
+export async function storedFavorites(): Promise<string[]> {
+	const state = (await (await fetch('http://127.0.0.1:9966/__state')).json()) as {
+		family: { public_id: string; tags: string[] }[];
+	};
+	return state.family.filter((photo) => photo.tags.includes('favorite')).map((photo) => photo.public_id);
+}
+
 /**
  * Sets the context of a photo straight in the Cloudinary mock, as if somebody had edited it by hand in the
  * Media Library: the app does not know, and what it has cached stays as it was.
