@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import {
 	expectNoA11yViolations,
 	login,
+	longPress,
 	resetBackend,
 	starButton,
 	storedContext,
@@ -265,6 +266,87 @@ test.describe('viewer', () => {
 		await expect(page.getByTestId('zoomable')).toHaveAttribute('data-scale', '1.00');
 		await touchGesture(page, [[{ x: cx + 100, y: cy }], [{ x: cx, y: cy }], [{ x: cx - 100, y: cy }], []]);
 		await expect(page).toHaveURL(/\/app\/photo\/Sample_002$/);
+	});
+});
+
+test.describe('selecting on a phone', () => {
+	test.beforeEach(async ({ page }) => {
+		await resetBackend(page);
+		await page.reload();
+		await page.waitForLoadState('networkidle');
+	});
+
+	test.afterEach(async ({ page }) => {
+		await resetBackend(page);
+	});
+
+	const bar = (page: Page) => page.getByRole('group', { name: 'Fotos seleccionadas' });
+
+	test('a long press picks a photo, and then a tap picks another one instead of opening it', async ({ page }) => {
+		await longPress(page, page.getByRole('button', { name: 'Abrir Sample_001' }));
+
+		await expect(bar(page).getByRole('status')).toHaveText('1 seleccionada');
+		await expect(page).toHaveURL(/\/app$/); // the lifted finger did not open the photo
+
+		await page.getByRole('button', { name: 'Seleccionar Sample_002' }).tap();
+		await expect(bar(page).getByRole('status')).toHaveText('2 seleccionadas');
+		await expect(page).toHaveURL(/\/app$/);
+
+		await page.getByRole('button', { name: 'Seleccionar Sample_002' }).tap();
+		await expect(bar(page).getByRole('status')).toHaveText('1 seleccionada');
+	});
+
+	test('the long press does not let the browser pop up its own menu over the photo', async ({ page }) => {
+		// By position, not by name: once the photo is picked its name is no longer "Abrir …".
+		const cell = page.getByTestId('photo-grid').getByRole('button').first();
+		await longPress(page, cell);
+
+		const prevented = await cell.evaluate((el) => {
+			const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+			el.dispatchEvent(menu);
+			return menu.defaultPrevented;
+		});
+
+		expect(prevented).toBe(true);
+	});
+
+	test('a short tap still opens the photo', async ({ page }) => {
+		await page.getByRole('button', { name: 'Abrir Sample_001' }).tap();
+		await expect(page).toHaveURL(/\/app\/photo\/Sample_001$/);
+	});
+
+	test('a tap on the corner where the box is drawn does not pick by accident', async ({ page }) => {
+		const cell = page.getByRole('button', { name: 'Abrir Sample_001' });
+		const box = (await cell.boundingBox())!;
+		await page.touchscreen.tap(box.x + 8, box.y + 8);
+		await expect(bar(page)).toHaveCount(0);
+		await expect(page).toHaveURL(/\/app\/photo\/Sample_001$/);
+	});
+
+	test('the selection bar fits the screen and its controls are big enough for a finger', async ({ page }) => {
+		await longPress(page, page.getByRole('button', { name: 'Abrir Sample_001' }));
+		await expect(bar(page)).toBeVisible();
+
+		const { small, count, overflow } = await bar(page).evaluate((node) => {
+			const controls = [...node.querySelectorAll<HTMLElement>('button')].filter((el) => el.getClientRects().length > 0);
+			return {
+				count: controls.length,
+				small: controls
+					.map((el) => ({ name: el.textContent?.trim() ?? '', box: el.getBoundingClientRect() }))
+					.filter(({ box }) => box.width < 44 || box.height < 44)
+					.map(({ name, box }) => `${name}: ${Math.round(box.width)}×${Math.round(box.height)}`),
+				overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
+			};
+		});
+		expect(count).toBeGreaterThanOrEqual(2); // "Seleccionar las 80" and "Cancelar selección"
+		expect(small).toEqual([]);
+		expect(overflow).toBeLessThanOrEqual(0);
+	});
+
+	test('has nothing wrong for a screen reader while photos are picked', async ({ page }) => {
+		await longPress(page, page.getByRole('button', { name: 'Abrir Sample_001' }));
+		await expect(bar(page)).toBeVisible();
+		await expectNoA11yViolations(page);
 	});
 });
 

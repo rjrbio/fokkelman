@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 const TINY_PNG = Buffer.from(
 	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -51,6 +51,17 @@ export async function touchGesture(page: Page, steps: TouchPoint[][]): Promise<v
 			touchPoints: fingers.map((point, id) => ({ x: point.x, y: point.y, id }))
 		});
 	}
+}
+
+/** Presses a finger on the middle of `target` for `ms` and lifts it (Chromium only), as a long press does. */
+export async function longPress(page: Page, target: Locator, ms = 700): Promise<void> {
+	const box = await target.boundingBox();
+	if (!box) throw new Error('nothing to press: the element has no box');
+	const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+	await page.waitForTimeout(ms);
+	await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 }
 
 /**

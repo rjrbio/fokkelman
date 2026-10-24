@@ -32,7 +32,8 @@ export const es = {
 	},
 	grid: {
 		empty: 'Ninguna foto coincide con los filtros.',
-		open: (name: string, details?: string) => (details ? `Abrir ${name}: ${details}` : `Abrir ${name}`)
+		open: (name: string, details?: string) => (details ? `Abrir ${name}: ${details}` : `Abrir ${name}`),
+		select: (name: string) => `Seleccionar ${name}`
 	},
 	viewer: {
 		label: 'Visor de fotos',
@@ -94,6 +95,13 @@ export const es = {
 		uploadAll: 'Subir todo',
 		uploading: 'Subiendo…',
 		close: 'Cerrar'
+	},
+	selection: {
+		bar: 'Fotos seleccionadas',
+		count: (n: number) => (n === 1 ? '1 seleccionada' : `${n.toLocaleString('es-ES')} seleccionadas`),
+		selectAll: (n: number) => `Seleccionar las ${n.toLocaleString('es-ES')}`,
+		selectUnidentified: (n: number) => `Seleccionar las ${n.toLocaleString('es-ES')} sin identificar`,
+		clear: 'Cancelar selección'
 	},
 	notes: {
 		heading: 'Datos de la foto',
@@ -163,7 +171,8 @@ export const en: SharedMessages & { demo: DemoMessages } = {
 	},
 	grid: {
 		empty: 'No photos match your filters.',
-		open: (name, details) => (details ? `Open ${name}: ${details}` : `Open ${name}`)
+		open: (name, details) => (details ? `Open ${name}: ${details}` : `Open ${name}`),
+		select: (name) => `Select ${name}`
 	},
 	viewer: {
 		label: 'Photo viewer',

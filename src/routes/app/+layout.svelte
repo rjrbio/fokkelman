@@ -7,6 +7,7 @@
 		withAnnotationOverrides
 	} from '$lib/annotate.svelte';
 	import PhotoGrid from '$lib/components/PhotoGrid.svelte';
+	import SelectionBar from '$lib/components/SelectionBar.svelte';
 	import TopBar from '$lib/components/TopBar.svelte';
 	import UploadModal from '$lib/components/UploadModal.svelte';
 	import {
@@ -23,6 +24,7 @@
 		uniqueFolders
 	} from '$lib/filterPhotos';
 	import { es } from '$lib/messages';
+	import { clearSelection, selectMany, selected, toggleSelected } from '$lib/selection.svelte';
 
 	let { data, children } = $props();
 
@@ -35,6 +37,12 @@
 		void data.fetchedAt;
 		clearFavoriteOverrides();
 		clearAnnotationOverrides();
+	});
+
+	// What is picked belongs to the view it was picked in: another search or filter starts with nothing picked.
+	$effect(() => {
+		void page.url.search;
+		clearSelection();
 	});
 
 	// keepFocus: SvelteKit would otherwise blur the photo that was clicked, and the viewer could
@@ -53,23 +61,41 @@
 
 <svelte:head><title>{es.app.title}</title></svelte:head>
 
-<TopBar
-	folders={uniqueFolders(photos)}
-	people={knownPeople(photos)}
-	decades={decadesOf(photos)}
-	{filters}
-	total={filtered.length}
-	stale={data.stale}
-	onUpload={() => (showUpload = true)}
-/>
+{#if selected.size > 0}
+	<SelectionBar
+		count={selected.size}
+		total={filtered.length}
+		onSelectAll={() => selectMany(filtered.map((p) => p.publicId))}
+		onClear={clearSelection}
+	/>
+{:else}
+	<TopBar
+		folders={uniqueFolders(photos)}
+		people={knownPeople(photos)}
+		decades={decadesOf(photos)}
+		{filters}
+		total={filtered.length}
+		stale={data.stale}
+		onUpload={() => (showUpload = true)}
+	/>
+{/if}
 
 <main>
 	<h1 class="sr-only">{es.app.heading}</h1>
+	{#if filters.unidentified && filtered.length > 0 && selected.size === 0}
+		<div class="shortcut">
+			<button onclick={() => selectMany(filtered.map((p) => p.publicId))}>
+				{es.selection.selectUnidentified(filtered.length)}
+			</button>
+		</div>
+	{/if}
 	<PhotoGrid
 		photos={filtered}
 		cloudName={data.cloudName}
 		resetKey={page.url.search}
 		onOpen={openPhoto}
+		{selected}
+		onToggleSelect={toggleSelected}
 	/>
 </main>
 
@@ -103,6 +129,17 @@
 		main {
 			padding-bottom: calc(56px + env(safe-area-inset-bottom));
 		}
+	}
+	.shortcut {
+		padding: 0.5rem 1rem;
+	}
+	.shortcut button {
+		min-height: 44px;
+		padding: 0 1rem;
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		background: var(--chip);
+		color: var(--fg);
 	}
 	.toasts {
 		position: fixed;

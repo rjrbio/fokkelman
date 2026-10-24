@@ -28,6 +28,18 @@ test('the family gallery', async ({ page }) => {
 	await expectNoA11yViolations(page);
 });
 
+test('the gallery with photos picked, and the shortcut for the ones not identified', async ({ page }) => {
+	await login(page);
+	await hydrated(page);
+	await page.getByRole('button', { name: 'Sin identificar', exact: true }).click();
+	await page.getByRole('button', { name: /sin identificar$/ }).waitFor();
+	await expectNoA11yViolations(page);
+
+	await page.getByRole('button', { name: /sin identificar$/ }).click();
+	await page.getByRole('group', { name: 'Fotos seleccionadas' }).waitFor();
+	await expectNoA11yViolations(page);
+});
+
 test('the viewer', async ({ page }) => {
 	await login(page);
 	await hydrated(page);
