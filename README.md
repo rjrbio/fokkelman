@@ -5,6 +5,8 @@ digitalizadas, con búsqueda, favoritos, descarga y subida, detrás de un login
 seguro. Incluye una [demo pública](https://fokkelman.netlify.app/demo) con
 fotos de muestra para que cualquiera pueda probar la app real.
 
+![La galería de la demo pública: fotos de muestra en filas justificadas sobre fondo oscuro](static/screens/gallery.jpg)
+
 **Stack**: SvelteKit + TypeScript · Cloudinary (imágenes, metadatos y búsqueda,
 sin base de datos aparte) · Netlify (hosting y funciones de servidor).
 
@@ -66,6 +68,23 @@ accesibilidad de Lighthouse) por el login, la galería, el visor, la subida, la
 demo y la landing, y fallan ante cualquier fallo WCAG 2.1 A/AA. Los contrastes
 de la paleta los fija `src/lib/tokens.test.ts`.
 
+## Capturas de la landing
+
+La landing y la tarjeta de vista previa (`static/og.jpg`) usan capturas de la
+**demo pública**, nunca de la zona familiar. Se regeneran con:
+
+```bash
+npm run screenshots                                   # fotografía https://fokkelman.netlify.app/demo
+SCREENSHOT_BASE_URL=https://<preview>.netlify.app npm run screenshots   # otro despliegue
+SCREENSHOT_VIEWER_PHOTO=lake npm run screenshots      # otra foto abierta en el visor (parte del nombre)
+```
+
+El script (`scripts/screenshots.mjs`) solo abre `/demo` y se detiene si la
+página no es la demo. Los tamaños los fija `src/lib/screens.ts`, y
+`src/lib/screens.test.ts` comprueba que los ficheros existen, miden lo
+declarado y pesan menos de 300 KB. Tras regenerarlas hay que mirarlas y
+ajustar los textos `alt` de `screens.ts` a lo que se ve.
+
 ## Arquitectura en corto
 
 - El navegador nunca ve el API secret: búsqueda, favoritos (tag `favorite`)
@@ -83,7 +102,13 @@ de la paleta los fija `src/lib/tokens.test.ts`.
   serverless: por sí solo únicamente frena los intentos de adivinación poco
   sofisticados.
 - Zona pública: landing (`/`) y demo interactiva (`/demo`, carpeta `demo`
-  de Cloudinary, favoritos solo en localStorage del visitante).
+  de Cloudinary, favoritos solo en localStorage del visitante). La landing
+  enseña capturas de la demo y las dos páginas llevan etiquetas de vista previa
+  (Open Graph y Twitter: `src/lib/seo.ts` y `src/lib/components/SeoHead.svelte`),
+  con la dirección canónica y la imagen `/og.jpg` (1200×630, JPEG porque las
+  redes no leen WebP de forma fiable) calculadas con el origen de la petición,
+  así que valen en producción, en las previews de Netlify y en local. Cada
+  página pone su propio `<title>`; `src/app.html` no tiene ninguno.
 - Interfaz: galería oscura con los colores y medidas como variables CSS en
   `src/app.css` y la tipografía Inter autoalojada (`@fontsource-variable/inter`,
   sin Google Fonts). La rejilla son filas justificadas por la proporción real de
