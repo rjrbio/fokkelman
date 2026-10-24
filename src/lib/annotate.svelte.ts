@@ -18,7 +18,7 @@ const inFlight = new Set<string>();
 /** How long the "could not save" message stays up before it dismisses itself. */
 export const ANNOTATION_FAILURE_MS = 5000;
 
-export type AnnotationProblem = 'failed' | 'too-many-people' | 'too-many-calls';
+export type AnnotationProblem = 'failed' | 'too-many-people' | 'too-many-calls' | 'rate-limited';
 
 /** The last save that did not work, or `problem: null`. Read it inside a template/`$derived`. */
 export const annotationFailure = $state<{ problem: AnnotationProblem | null; count: number }>({
@@ -57,6 +57,10 @@ interface ServerAnswer {
 	failed?: unknown[];
 	problem?: unknown;
 }
+
+/** The reasons the server can give for a refusal that the app has words for; any other is just "failed". */
+const knownProblem = (problem: unknown): AnnotationProblem =>
+	problem === 'too-many-people' || problem === 'too-many-calls' || problem === 'rate-limited' ? problem : 'failed';
 
 interface Attempt {
 	outcome: SaveOutcome;
@@ -114,7 +118,7 @@ async function attempt(
 		}
 		const answer = (await response.json().catch(() => null)) as ServerAnswer | null;
 		if (!response.ok) {
-			return fail(ids, answer?.problem === 'too-many-people' || answer?.problem === 'too-many-calls' ? answer.problem : 'failed');
+			return fail(ids, knownProblem(answer?.problem));
 		}
 		for (const item of answer?.updated ?? []) {
 			if (typeof item.publicId === 'string' && item.annotation && next.has(item.publicId)) {

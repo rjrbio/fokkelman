@@ -41,6 +41,15 @@ function createState() {
 
 let state = createState();
 
+// Para probar qué pasa cuando Cloudinary se queda sin llamadas por hora: la búsqueda y la lectura de contextos
+// contestan 420 (lo que contesta la API de administración) mientras esté puesto.
+let rateLimited = false;
+const quotaHeaders = (remaining) => ({
+	'X-FeatureRateLimit-Limit': '500',
+	'X-FeatureRateLimit-Remaining': String(remaining),
+	'X-FeatureRateLimit-Reset': new Date(Date.now() + 3600_000).toUTCString()
+});
+
 // Lo que la API real firma: todos los parámetros menos `file`, `api_key`, `resource_type` y la propia
 // firma, ordenados, con las listas (`public_ids[]`) unidas por comas. Si la app firma mal, el test falla.
 const API_KEY = 'test-key';
@@ -98,8 +107,26 @@ const server = createServer(async (req, res) => {
 
 	if (req.url === '/__reset') {
 		state = createState();
+		rateLimited = false;
 		res.end(JSON.stringify({}));
 		return;
+	}
+
+	// Solo para los tests: se acaba (o vuelve) el presupuesto de llamadas por hora de la API de administración.
+	if (req.method === 'POST' && req.url === '/__rate-limit') {
+		rateLimited = JSON.parse(body).on === true;
+		res.end(JSON.stringify({}));
+		return;
+	}
+
+	const isAdminCall = req.url?.endsWith('/resources/search') || (req.method === 'GET' && req.url?.includes('/resources/image/upload'));
+	if (isAdminCall) {
+		for (const [name, value] of Object.entries(quotaHeaders(rateLimited ? 0 : 400))) res.setHeader(name, value);
+		if (rateLimited) {
+			res.statusCode = 420;
+			res.end(JSON.stringify({ error: { message: 'Rate limit exceeded' } }));
+			return;
+		}
 	}
 
 	if (req.url?.endsWith('/resources/search')) {

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Photo } from '$lib/types';
 import { parseContext } from './context';
+import { noteQuota } from './quota';
 
 export interface CloudinaryConfig {
 	cloudName: string;
@@ -133,6 +134,7 @@ export async function getContexts(cfg: CloudinaryConfig, publicIds: string[]): P
 		headers: { Authorization: basicAuth(cfg) },
 		signal: AbortSignal.timeout(CONTEXT_CALL_TIMEOUT_MS)
 	});
+	noteQuota(res, 'read the contexts');
 	if (!res.ok) throw new Error(`Cloudinary resources API failed: ${res.status}`);
 	const data = (await res.json()) as { resources?: { public_id: string; context?: unknown }[] };
 	for (const resource of data.resources ?? []) contexts.set(resource.public_id, resource.context);
@@ -198,6 +200,7 @@ export async function searchAllPhotos(
 				...(nextCursor ? { next_cursor: nextCursor } : {})
 			})
 		});
+		noteQuota(res, 'search');
 		if (!res.ok) throw new Error(`Cloudinary search failed: ${res.status}`);
 		const data = (await res.json()) as { resources: SearchResource[]; next_cursor?: string };
 		for (const r of data.resources) {

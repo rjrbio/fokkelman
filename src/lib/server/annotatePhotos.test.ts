@@ -3,6 +3,7 @@ import { noAnnotation } from '$lib/annotations';
 import type { Photo } from '$lib/types';
 import { CONTEXT_BATCH } from './annotate';
 import { contextEntries } from './context';
+import { CloudinaryRateLimitError } from './quota';
 
 const cloudinary = vi.hoisted(() => ({
 	searchAllPhotos: vi.fn(),
@@ -395,5 +396,15 @@ describe('the time of a request', () => {
 		// 8 s in all, 5 spent reading: 3 s for the writes, so the third group does not start (it would, with 6 s).
 		expect(cloudinary.updateContext).toHaveBeenCalledTimes(2);
 		expect(outcome).toMatchObject({ status: 'done', failed: ['c'] });
+	});
+});
+
+describe('when Cloudinary has no calls left for the hour', () => {
+	it('says that is why nothing was written, so that the person can be told', async () => {
+		cloudinary.getContexts.mockRejectedValue(new CloudinaryRateLimitError('read the contexts', null));
+
+		expect(await annotatePhotos(['a'], { caption: 'x' })).toEqual({ status: 'unavailable', rateLimited: true });
+
+		expect(cloudinary.updateContext).not.toHaveBeenCalled();
 	});
 });

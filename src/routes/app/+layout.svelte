@@ -175,7 +175,9 @@
 				? es.app.annotateTooManyPeople
 				: annotationFailure.problem === 'too-many-calls'
 					? es.app.annotateTooManyChanges
-					: es.app.annotateFailed(annotationFailure.count)}
+					: annotationFailure.problem === 'rate-limited'
+						? es.app.annotateRateLimited
+						: es.app.annotateFailed(annotationFailure.count)}
 		</p>
 	{/if}
 </div>

@@ -26,6 +26,8 @@ export const es = {
 	error: {
 		title: 'Algo ha ido mal',
 		body: 'La biblioteca de fotos no está disponible ahora mismo. Vuelve a intentarlo en unos minutos.',
+		rateLimited:
+			'Cloudinary, donde están las fotos, ha llegado a su límite de peticiones por hora. Vuelve a intentarlo en unos minutos.',
 		notFoundTitle: 'No encontramos esta página',
 		notFoundBody: 'Puede que el enlace esté mal escrito o que la foto ya no exista.',
 		retry: 'Reintentar',
@@ -184,7 +186,9 @@ export const es = {
 				? 'No se pudieron guardar los datos de la foto. Inténtalo de nuevo.'
 				: `No se pudieron guardar los datos de ${photos} fotos. Inténtalo de nuevo.`,
 		annotateTooManyPeople: 'Hay demasiadas personas en la foto: quita alguna e inténtalo de nuevo.',
-		annotateTooManyChanges: 'Son demasiados cambios a la vez. Hazlos en grupos más pequeños.'
+		annotateTooManyChanges: 'Son demasiados cambios a la vez. Hazlos en grupos más pequeños.',
+		annotateRateLimited:
+			'Cloudinary ha llegado a su límite de peticiones por hora y no se pudo guardar. Vuelve a intentarlo en unos minutos.'
 	}
 };
 
@@ -210,6 +214,8 @@ export const en: SharedMessages & { demo: DemoMessages } = {
 	error: {
 		title: 'Something went wrong',
 		body: 'The photo library is unavailable right now. Please try again in a few minutes.',
+		rateLimited:
+			'Cloudinary, where the photos live, has reached its hourly limit of requests. Please try again in a few minutes.',
 		notFoundTitle: 'Page not found',
 		notFoundBody: 'The link may be mistyped, or the photo may no longer exist.',
 		retry: 'Try again',

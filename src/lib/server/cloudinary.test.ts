@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { noAnnotation } from '$lib/annotations';
+import { CloudinaryRateLimitError, resetQuotaWarnings } from './quota';
 import {
 	CONTEXT_CALL_TIMEOUT_MS,
 	createUploadSignature,
@@ -235,6 +236,40 @@ describe('getContexts', () => {
 		await expect(getContexts(makeConfig(fetchFn as typeof fetch), ['a'])).rejects.toThrow(
 			'Cloudinary resources API failed: 401'
 		);
+	});
+});
+
+describe('the budget of calls Cloudinary gives for the hour', () => {
+	const spent = (status: number) =>
+		new Response('{}', { status, headers: { 'X-FeatureRateLimit-Limit': '500', 'X-FeatureRateLimit-Remaining': '0', 'X-FeatureRateLimit-Reset': 'Tue, 20 Oct 2026 21:00:00 GMT' } });
+
+	it.each([420, 429])('makes the search fail with a clear error, not a generic one, on a %i', async (status) => {
+		const fetchFn = vi.fn().mockResolvedValue(spent(status));
+		const error = await searchAllPhotos(makeConfig(fetchFn as typeof fetch), 'resource_type:image').catch((e) => e);
+		expect(error).toBeInstanceOf(CloudinaryRateLimitError);
+		expect(error.resetsAt).toEqual(new Date('2026-10-20T21:00:00Z'));
+	});
+
+	it('makes the read of the contexts fail the same way', async () => {
+		const fetchFn = vi.fn().mockResolvedValue(spent(420));
+		await expect(getContexts(makeConfig(fetchFn as typeof fetch), ['a'])).rejects.toBeInstanceOf(CloudinaryRateLimitError);
+	});
+
+	it('logs a warning, once, when the search leaves little of it', async () => {
+		resetQuotaWarnings();
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const low = () =>
+			new Response(JSON.stringify({ resources: [], next_cursor: undefined }), {
+				headers: { 'X-FeatureRateLimit-Limit': '500', 'X-FeatureRateLimit-Remaining': '12' }
+			});
+		const fetchFn = vi.fn().mockImplementation(async () => low());
+
+		await searchAllPhotos(makeConfig(fetchFn as typeof fetch), 'resource_type:image');
+		await searchAllPhotos(makeConfig(fetchFn as typeof fetch), 'resource_type:image');
+
+		expect(warn).toHaveBeenCalledOnce();
+		expect(warn.mock.calls[0][0]).toContain('12 of 500');
+		warn.mockRestore();
 	});
 });
 

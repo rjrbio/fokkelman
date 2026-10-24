@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({ getFamilyIndex: vi.fn() }));
 vi.mock('$env/dynamic/private', () => ({ env: { CLOUDINARY_CLOUD_NAME: 'testcloud' } }));
 vi.mock('$lib/server/photos', () => ({ getFamilyIndex: mocks.getFamilyIndex }));
 
+import { CloudinaryRateLimitError } from '$lib/server/quota';
 import { load } from './+layout.server';
 
 function loadWith(authed: boolean) {
@@ -25,5 +26,15 @@ describe('/app layout load', () => {
 	it('loads the photo index for an authenticated request', async () => {
 		await expect(loadWith(true)).resolves.toMatchObject({ photos: [], cloudName: 'testcloud' });
 		expect(mocks.getFamilyIndex).toHaveBeenCalledOnce();
+	});
+
+	it('says so, with a 503 the error page knows, when Cloudinary has no calls left and there is no copy to show', async () => {
+		mocks.getFamilyIndex.mockRejectedValue(new CloudinaryRateLimitError('search', null));
+		await expect(loadWith(true)).rejects.toMatchObject({ status: 503, body: { message: 'rate-limited' } });
+	});
+
+	it('lets any other failure through as it is', async () => {
+		mocks.getFamilyIndex.mockRejectedValue(new Error('boom'));
+		await expect(loadWith(true)).rejects.toThrow('boom');
 	});
 });

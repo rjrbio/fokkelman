@@ -60,6 +60,14 @@ describe('POST /api/annotate', () => {
 		expect(photos.annotatePhotos).not.toHaveBeenCalled();
 	});
 
+	it('answers 503 with its own problem when Cloudinary has no calls left', async () => {
+		photos.annotatePhotos.mockResolvedValue({ status: 'unavailable', rateLimited: true });
+		expect(await call({ publicIds: ['a'], patch: { caption: 'x' } })).toMatchObject({
+			status: 503,
+			body: { problem: 'rate-limited' }
+		});
+	});
+
 	it('answers 404 when a photo is not in the family index', async () => {
 		photos.annotatePhotos.mockResolvedValue({ status: 'unknown-photo' });
 		expect((await call({ publicIds: ['demo/x'], patch: { caption: 'x' } })).status).toBe(404);

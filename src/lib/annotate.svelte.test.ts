@@ -103,6 +103,13 @@ describe('saveAnnotation', () => {
 		expect(annotationOf('a', base).people).toEqual([]);
 	});
 
+	it('passes on that Cloudinary has no calls left, so that the app can say so', async () => {
+		const base = [photo('a')];
+		await saveAnnotation(base, { year: 1975 }, answer({ problem: 'rate-limited' }, 503));
+		expect(annotationFailure.problem).toBe('rate-limited');
+		expect(annotationOf('a', base).year).toBeNull();
+	});
+
 	it('does not even ask when the patch cannot be applied here', async () => {
 		const base = [photo('a', { people: Array.from({ length: 7 }, (_, i) => `${'N'.repeat(30)}${i}`) })];
 		const send = vi.fn();

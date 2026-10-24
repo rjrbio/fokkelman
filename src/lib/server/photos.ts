@@ -11,6 +11,7 @@ import {
 } from './annotate';
 import { getContexts, searchAllPhotos, setFavorite, setFavorites, type CloudinaryConfig } from './cloudinary';
 import { withContext } from './context';
+import { CloudinaryRateLimitError } from './quota';
 import { createIndexCache, withFavorite } from './photoIndex';
 
 export const DEMO_FOLDER = 'demo';
@@ -95,7 +96,7 @@ export type AnnotateOutcome =
 	| { status: 'unknown-photo' }
 	| { status: 'rejected'; problem: 'too-many-people' | 'too-many-calls' }
 	/** The current context of the photos could not be read, so nothing was written. */
-	| { status: 'unavailable' }
+	| { status: 'unavailable'; /** Because Cloudinary's budget of calls for the hour is spent. */ rateLimited?: true }
 	| {
 			status: 'done';
 			/** The photos that were written or that already were as asked, with the annotation they have now. */
@@ -137,7 +138,7 @@ export async function annotatePhotos(
 		}
 	} catch (err) {
 		console.error('[annotate] could not read the current context', err);
-		return { status: 'unavailable' };
+		return err instanceof CloudinaryRateLimitError ? { status: 'unavailable', rateLimited: true } : { status: 'unavailable' };
 	}
 
 	const missing: string[] = [];
