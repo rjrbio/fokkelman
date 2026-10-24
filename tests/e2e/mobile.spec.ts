@@ -464,6 +464,55 @@ test.describe('selecting on a phone', () => {
 	});
 });
 
+test.describe('the public demo on a phone', () => {
+	// The demo shares the photo grid but has no selection: a finger on a photo must behave as it always did,
+	// i.e. leave the browser's own long press (its menu and its text selection) alone.
+	const demoCell = (page: Page) => page.getByRole('button', { name: 'Open demo/sample_1' });
+
+	test.beforeEach(async ({ page }) => {
+		await page.goto('/demo');
+		await page.waitForLoadState('networkidle'); // hydration
+		await expect(demoCell(page)).toBeVisible();
+	});
+
+	test('a finger held on a photo does not get the browser menu cancelled', async ({ page }) => {
+		const cell = demoCell(page);
+		// The press has to reach the page as a touch pointer, or what follows would prove nothing.
+		await cell.evaluate((el) => {
+			(window as unknown as { pointerTypes: string[] }).pointerTypes = [];
+			el.addEventListener('pointerdown', (event) =>
+				(window as unknown as { pointerTypes: string[] }).pointerTypes.push((event as PointerEvent).pointerType)
+			);
+		});
+
+		const lift = await holdFinger(page, cell);
+		await page.waitForTimeout(700); // past the 500 ms a long press takes
+		const { cancelled, pointerTypes } = await cell.evaluate((el) => {
+			const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+			el.dispatchEvent(menu);
+			return { cancelled: menu.defaultPrevented, pointerTypes: (window as unknown as { pointerTypes: string[] }).pointerTypes };
+		});
+		await lift();
+
+		expect(pointerTypes).toEqual(['touch']);
+		expect(cancelled).toBe(false);
+	});
+
+	test('a photo is not made unselectable for the finger, as it is on the family grid', async ({ page }) => {
+		// `-webkit-touch-callout` (the iOS menu) is not a property Chromium has, so it cannot be read here:
+		// `user-select`, set by the same rule, stands for it.
+		expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
+		expect(await demoCell(page).evaluate((el) => getComputedStyle(el).userSelect)).not.toBe('none');
+
+		// The control: the same phone, the same rule, on the grid that does have a selection.
+		await page.goto('/app');
+		await page.waitForLoadState('networkidle');
+		const familyCell = page.getByTestId('photo-grid').getByRole('button').first();
+		await expect(familyCell).toBeVisible();
+		expect(await familyCell.evaluate((el) => getComputedStyle(el).userSelect)).toBe('none');
+	});
+});
+
 test.describe('annotating on a phone', () => {
 	test.beforeEach(async ({ page }) => {
 		await resetBackend(page);

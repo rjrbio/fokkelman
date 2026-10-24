@@ -58,7 +58,8 @@
 	function onPointerDown(event: PointerEvent, publicId: string) {
 		// A new press starts: a long press that had no click after it (the browsers differ) is over.
 		longPressed = false;
-		touchPress = event.pointerType === 'touch';
+		// Only where photos can be picked: elsewhere (the demo) the browser's own long press is none of our business.
+		touchPress = !!onToggleSelect && event.pointerType === 'touch';
 		if (!onToggleSelect || event.pointerType === 'mouse') return;
 		pressStart = { x: event.clientX, y: event.clientY };
 		clearTimeout(pressTimer);
@@ -138,6 +139,7 @@
 					<div class="item" class:picked class:selecting style:width="{placed.width}px">
 						<button
 							class="cell"
+							class:selectable={Boolean(onToggleSelect)}
 							aria-label={selecting ? m.select(id) : m.open(id, describe(placed.item))}
 							aria-pressed={selecting ? picked : undefined}
 							onclick={() => activate(id)}
@@ -199,8 +201,8 @@
 		overflow: hidden;
 	}
 	@media (pointer: coarse) {
-		/* A finger would otherwise pop up the system's menu for the photo. */
-		.cell {
+		/* A finger would otherwise pop up the system's menu for the photo. Only where photos can be picked: the demo keeps the browser's own. */
+		.cell.selectable {
 			-webkit-touch-callout: none;
 			-webkit-user-select: none;
 			user-select: none;
