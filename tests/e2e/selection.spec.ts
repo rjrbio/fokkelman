@@ -108,3 +108,17 @@ test('a picked photo that has the keyboard focus does not look like one that has
 
 	expect(await ring()).not.toBe(unfocused);
 });
+
+test('a right click with the mouse still opens the browser menu on a photo', async ({ page }) => {
+	// Seen from the window, which hears the event after the photo has had its say.
+	await page.evaluate(() =>
+		window.addEventListener('contextmenu', (event) => {
+			(window as Window & { menuCancelled?: boolean }).menuCancelled = event.defaultPrevented;
+		})
+	);
+
+	await page.getByRole('button', { name: 'Abrir Sample_001' }).click({ button: 'right' });
+
+	const cancelled = await page.evaluate(() => (window as Window & { menuCancelled?: boolean }).menuCancelled);
+	expect(cancelled).toBe(false);
+});

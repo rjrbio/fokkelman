@@ -53,15 +53,21 @@ export async function touchGesture(page: Page, steps: TouchPoint[][]): Promise<v
 	}
 }
 
-/** Presses a finger on the middle of `target` for `ms` and lifts it (Chromium only), as a long press does. */
-export async function longPress(page: Page, target: Locator, ms = 700): Promise<void> {
+/** Puts a finger down on the middle of `target` (Chromium only) and gives back what lifts it, so a test can act while it is down. */
+export async function holdFinger(page: Page, target: Locator): Promise<() => Promise<unknown>> {
 	const box = await target.boundingBox();
 	if (!box) throw new Error('nothing to press: the element has no box');
 	const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 	const cdp = await page.context().newCDPSession(page);
 	await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+	return () => cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+}
+
+/** Presses a finger on the middle of `target` for `ms` and lifts it (Chromium only), as a long press does. */
+export async function longPress(page: Page, target: Locator, ms = 700): Promise<void> {
+	const lift = await holdFinger(page, target);
 	await page.waitForTimeout(ms);
-	await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+	await lift();
 }
 
 /**

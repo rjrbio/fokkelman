@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
 	expectNoA11yViolations,
+	holdFinger,
 	login,
 	longPress,
 	resetBackend,
@@ -296,18 +297,46 @@ test.describe('selecting on a phone', () => {
 		await expect(bar(page).getByRole('status')).toHaveText('1 seleccionada');
 	});
 
-	test('the long press does not let the browser pop up its own menu over the photo', async ({ page }) => {
+	test('the browser is not let pop up its own menu over the photo during or right after a press', async ({ page }) => {
 		// By position, not by name: once the photo is picked its name is no longer "Abrir …".
 		const cell = page.getByTestId('photo-grid').getByRole('button').first();
-		await longPress(page, cell);
+		/** Asks for the browser's menu on the photo, as its own long press does, and says whether the page cancelled it. */
+		const menuCancelled = () =>
+			cell.evaluate((el) => {
+				const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+				el.dispatchEvent(menu);
+				return menu.defaultPrevented;
+			});
 
-		const prevented = await cell.evaluate((el) => {
+		const lift = await holdFinger(page, cell);
+
+		// The browser can ask for its menu before the page's own timer (500 ms) has picked the photo...
+		await page.waitForTimeout(200);
+		await expect(bar(page)).toHaveCount(0);
+		expect(await menuCancelled(), 'while the finger is down, before the photo is picked').toBe(true);
+
+		// ...after it has...
+		await expect(bar(page).getByRole('status')).toHaveText('1 seleccionada');
+		expect(await menuCancelled(), 'while the finger is down, once the photo is picked').toBe(true);
+
+		// ...and right after the finger leaves.
+		await lift();
+		expect(await menuCancelled(), 'right after the finger is lifted').toBe(true);
+	});
+
+	test('a mouse press after a finger takes the protection away: the menu is only cancelled for touch', async ({ page }) => {
+		const cell = page.getByTestId('photo-grid').getByRole('button').first();
+		const lift = await holdFinger(page, cell);
+		await lift();
+
+		const cancelled = await cell.evaluate((el) => {
+			el.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'mouse', bubbles: true }));
 			const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
 			el.dispatchEvent(menu);
 			return menu.defaultPrevented;
 		});
 
-		expect(prevented).toBe(true);
+		expect(cancelled).toBe(false);
 	});
 
 	test('a short tap still opens the photo', async ({ page }) => {

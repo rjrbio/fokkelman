@@ -48,10 +48,17 @@
 	let pressStart = { x: 0, y: 0 };
 	/** The long press already picked the photo: the click that follows the lifted finger must do nothing. */
 	let longPressed = false;
+	/**
+	 * A finger is down on a photo, or was a moment ago: the browser's own long press asks for its menu at about
+	 * the same time as our timer fires (before it, on some phones), and may do so after the finger is lifted.
+	 * So it is not tied to the timer, nor reset by the click or the end of the touch: only the next press ends it.
+	 */
+	let touchPress = false;
 
 	function onPointerDown(event: PointerEvent, publicId: string) {
-		// A new touch starts: a long press that had no click after it (the browsers differ) is over.
+		// A new press starts: a long press that had no click after it (the browsers differ) is over.
 		longPressed = false;
+		touchPress = event.pointerType === 'touch';
 		if (!onToggleSelect || event.pointerType === 'mouse') return;
 		pressStart = { x: event.clientX, y: event.clientY };
 		clearTimeout(pressTimer);
@@ -138,7 +145,7 @@
 							onpointermove={onPointerMove}
 							onpointerup={() => clearTimeout(pressTimer)}
 							onpointercancel={() => clearTimeout(pressTimer)}
-							oncontextmenu={(event) => longPressed && event.preventDefault()}
+							oncontextmenu={(event) => (touchPress || longPressed) && event.preventDefault()}
 						>
 							<img src={thumbUrl(cloudName, placed.item)} alt="" loading="lazy" />
 							{#if placed.item.year !== null}<span class="year" aria-hidden="true">{placed.item.year}</span>{/if}
