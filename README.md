@@ -148,8 +148,8 @@ de la paleta los fija `src/lib/tokens.test.ts`.
   descripción, un año y personas, los mismos para todas las fotos de la subida.
   El servidor los revisa como una edición y construye él el `context`, que firma
   junto con la carpeta (`POST /api/upload-signature`): el navegador manda
-  exactamente ese `context`, nunca uno suyo. Las fotos de más de 10 MB se
-  descartan antes de enviarlas y se suben de dos en dos
+  exactamente ese `context`, nunca uno suyo. Las de más de 10 MB se descartan
+  antes de enviarlas; las demás se suben de dos en dos
   (`src/lib/uploadFiles.ts`).
 - Compartir: en el visor, `Compartir` manda la foto (la de 1600 px, no el
   original) como archivo en los dispositivos que pueden (se descarga un momento
