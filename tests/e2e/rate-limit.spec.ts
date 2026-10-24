@@ -46,3 +46,17 @@ test('saving says so when the calls are spent, and writes nothing', async ({ pag
 	await expect(viewer.getByLabel('Descripción')).toHaveValue('No se guarda'); // the form stays, to try again
 	expect(await storedContext('Sample_001')).toBeUndefined();
 });
+
+test('saving says so too when the calls are spent before the server has any copy of the photos', async ({ page }) => {
+	// `resetBackend` (in beforeEach) cleared the server's copy of the index and nothing has asked for it since, as
+	// on a server that has just started: reading the index is the first call that is refused.
+	await setRateLimit(true);
+
+	const response = await page.request.post('/api/annotate', {
+		data: { publicIds: ['Sample_001'], patch: { caption: 'No se guarda' } }
+	});
+
+	expect(response.status()).toBe(503);
+	expect(await response.json()).toMatchObject({ problem: 'rate-limited' });
+	expect(await storedContext('Sample_001')).toBeUndefined();
+});

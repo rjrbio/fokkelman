@@ -121,7 +121,15 @@ export async function annotatePhotos(
 	patch: AnnotationPatch
 ): Promise<AnnotateOutcome> {
 	const startedAt = Date.now();
-	const { photos } = await getFamilyIndex();
+	let photos: Photo[];
+	try {
+		({ photos } = await getFamilyIndex());
+	} catch (err) {
+		// A server that has just started has no copy to fall back on, so the first thing refused can be the index.
+		if (!(err instanceof CloudinaryRateLimitError)) throw err;
+		console.error('[annotate] could not read the family index', err);
+		return { status: 'unavailable', rateLimited: true };
+	}
 	const byId = new Map(photos.map((photo) => [photo.publicId, photo]));
 	const targets: Photo[] = [];
 	for (const id of publicIds) {

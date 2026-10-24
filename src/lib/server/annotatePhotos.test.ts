@@ -407,4 +407,23 @@ describe('when Cloudinary has no calls left for the hour', () => {
 
 		expect(cloudinary.updateContext).not.toHaveBeenCalled();
 	});
+
+	it('says so too when it is the index that cannot be read, with nothing cached to fall back on', async () => {
+		// A fresh instance of the server: the cache is empty, so the index is asked for first, and it is refused.
+		cloudinary.searchAllPhotos.mockRejectedValue(new CloudinaryRateLimitError('search the photos', null));
+
+		expect(await annotatePhotos(['a'], { caption: 'x' })).toEqual({ status: 'unavailable', rateLimited: true });
+
+		expect(cloudinary.getContexts).not.toHaveBeenCalled();
+		expect(cloudinary.updateContext).not.toHaveBeenCalled();
+	});
+
+	it('lets any other failure of the index through, as it always did', async () => {
+		cloudinary.searchAllPhotos.mockRejectedValue(new Error('boom'));
+
+		await expect(annotatePhotos(['a'], { caption: 'x' })).rejects.toThrow('boom');
+
+		expect(cloudinary.getContexts).not.toHaveBeenCalled();
+		expect(cloudinary.updateContext).not.toHaveBeenCalled();
+	});
 });
