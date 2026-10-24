@@ -14,7 +14,14 @@
 		favoriteFailure,
 		withFavoriteOverrides
 	} from '$lib/favorites.svelte';
-	import { filterPhotos, filtersFromSearchParams, sortPhotos, uniqueFolders } from '$lib/filterPhotos';
+	import { knownPeople } from '$lib/annotations';
+	import {
+		decadesOf,
+		filterPhotos,
+		filtersFromSearchParams,
+		sortPhotos,
+		uniqueFolders
+	} from '$lib/filterPhotos';
 	import { es } from '$lib/messages';
 
 	let { data, children } = $props();
@@ -48,6 +55,8 @@
 
 <TopBar
 	folders={uniqueFolders(photos)}
+	people={knownPeople(photos)}
+	decades={decadesOf(photos)}
 	{filters}
 	total={filtered.length}
 	stale={data.stale}

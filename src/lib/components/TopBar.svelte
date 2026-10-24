@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { tick, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { filtersToSearch, type GalleryFilters } from '$lib/filterPhotos';
+	import { filtersToSearch, NO_DECADE, type GalleryFilters } from '$lib/filterPhotos';
 	import { es } from '$lib/messages';
 	import BottomNav from './BottomNav.svelte';
 	import Icon from './Icon.svelte';
@@ -9,12 +9,18 @@
 
 	let {
 		folders,
+		people,
+		decades,
 		filters,
 		total,
 		stale,
 		onUpload
 	}: {
 		folders: string[];
+		/** Names used in the library, the most used first. */
+		people: string[];
+		/** Decades that have photos, the oldest first. */
+		decades: number[];
 		filters: GalleryFilters;
 		total: number;
 		stale: boolean;
@@ -33,7 +39,16 @@
 
 	// An active search always shows its field: tapping the magnifier cannot hide what is filtering the grid.
 	const searchShown = $derived(searchOpen || filters.query !== '');
-	const filtering = $derived(Boolean(filters.folder || filters.query || filters.favoritesOnly));
+	const filtering = $derived(
+		Boolean(
+			filters.folder ||
+				filters.query ||
+				filters.favoritesOnly ||
+				filters.person ||
+				filters.decade ||
+				filters.unidentified
+		)
+	);
 
 	$effect(() => () => clearTimeout(searchTimer));
 
@@ -60,6 +75,7 @@
 	}
 
 	const toggleFavorites = () => apply({ favoritesOnly: !filters.favoritesOnly });
+	const toggleUnidentified = () => apply({ unidentified: !filters.unidentified });
 </script>
 
 <header class="bar">
@@ -77,23 +93,6 @@
 		/>
 	</div>
 
-	<select
-		class="pill wide-only"
-		aria-label={m.collection}
-		value={filters.folder}
-		onchange={(e) => apply({ folder: e.currentTarget.value })}
-	>
-		<option value="">{m.allCollections}</option>
-		{#each folders as folder (folder)}
-			<option value={folder}>{folder}</option>
-		{/each}
-	</select>
-
-	<button class="pill wide-only" aria-pressed={filters.favoritesOnly} onclick={toggleFavorites}>
-		<Icon name="star" filled={filters.favoritesOnly} size={16} />
-		{m.favorites}
-	</button>
-
 	<span class="count" role="status">{m.photos(total)}</span>
 	{#if stale}<span class="stale" title={m.staleHint}>{m.stale}</span>{/if}
 
@@ -101,6 +100,56 @@
 	<form class="wide-only" method="POST" action="/logout">
 		<button class="pill" type="submit">{m.logout}</button>
 	</form>
+
+	<div class="filters wide-only" role="group" aria-label={m.filters}>
+		<select
+			class="pill"
+			aria-label={m.collection}
+			value={filters.folder}
+			onchange={(e) => apply({ folder: e.currentTarget.value })}
+		>
+			<option value="">{m.allCollections}</option>
+			{#each folders as folder (folder)}
+				<option value={folder}>{folder}</option>
+			{/each}
+		</select>
+
+		<select
+			class="pill"
+			aria-label={m.person}
+			value={filters.person}
+			onchange={(e) => apply({ person: e.currentTarget.value })}
+		>
+			<option value="">{m.allPeople}</option>
+			<!-- A name typed into the address that nobody has (yet): the select has to show what filters. -->
+			{#if filters.person && !people.includes(filters.person)}<option value={filters.person}>{filters.person}</option>{/if}
+			{#each people as name (name)}
+				<option value={name}>{name}</option>
+			{/each}
+		</select>
+
+		<select
+			class="pill"
+			aria-label={m.decade}
+			value={filters.decade}
+			onchange={(e) => apply({ decade: e.currentTarget.value })}
+		>
+			<option value="">{m.allDecades}</option>
+			{#each decades as decade (decade)}
+				<option value={String(decade)}>{m.decadeLabel(decade)}</option>
+			{/each}
+			<option value={NO_DECADE}>{m.noDate}</option>
+		</select>
+
+		<button class="pill" aria-pressed={filters.unidentified} onclick={toggleUnidentified}>
+			{m.unidentified}
+		</button>
+
+		<button class="pill" aria-pressed={filters.favoritesOnly} onclick={toggleFavorites}>
+			<Icon name="star" filled={filters.favoritesOnly} size={16} />
+			{m.favorites}
+		</button>
+	</div>
 
 	<button
 		class="icon narrow-only"
@@ -126,11 +175,11 @@
 {#if optionsOpen}
 	<OptionsSheet
 		{folders}
-		folder={filters.folder}
-		onChange={(folder) => {
-			apply({ folder });
-			optionsOpen = false;
-		}}
+		{people}
+		{decades}
+		{filters}
+		{total}
+		onChange={(patch) => apply(patch)}
 		onClose={() => (optionsOpen = false)}
 	/>
 {/if}
@@ -206,6 +255,14 @@
 		background: var(--accent);
 		color: var(--on-accent);
 		font-weight: 600;
+	}
+	/* Its own row under the rest of the bar, and after it in the page too: the focus order is the reading order. */
+	.filters {
+		display: flex;
+		align-items: center;
+		flex: 1 0 100%;
+		flex-wrap: wrap;
+		gap: 0.5rem;
 	}
 	.count {
 		margin-left: auto;

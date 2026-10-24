@@ -159,6 +159,31 @@ test('the options sheet holds the collection and the log out button', async ({ p
 	await expect(opener).toBeFocused();
 });
 
+test('the options sheet filters by person, decade and what is not identified, and stays open until told', async ({ page }) => {
+	await resetBackend(page);
+	await page.request.post('/api/annotate', { data: { publicIds: ['Sample_010'], patch: { year: 1975, addPeople: ['Ana'] } } });
+	await page.reload();
+	await page.waitForLoadState('networkidle');
+
+	await page.getByRole('button', { name: 'Opciones' }).tap();
+	const sheet = page.getByRole('dialog', { name: 'Opciones' });
+	await sheet.getByLabel('Persona').selectOption('Ana');
+	await expect(sheet).toBeVisible(); // choosing something does not close it: there may be more to choose
+	await sheet.getByLabel('Década').selectOption('1970');
+	await expect(sheet.getByRole('button', { name: 'Ver 1 foto' })).toBeVisible();
+
+	await sheet.getByRole('button', { name: 'Ver 1 foto' }).tap();
+	await expect(sheet).toHaveCount(0);
+	await expect(page.getByText('1 foto', { exact: true })).toBeVisible();
+	await expect(page).toHaveURL(/persona=Ana&decada=1970$/);
+	await expect(tabs(page).getByRole('link', { name: 'Fotos' })).not.toHaveAttribute('aria-current', 'page');
+
+	await page.getByRole('button', { name: 'Opciones' }).tap();
+	await page.getByRole('dialog', { name: 'Opciones' }).getByRole('button', { name: 'Sin identificar' }).tap();
+	await expect(page.getByText('Ninguna foto coincide con los filtros.')).toBeVisible();
+	await resetBackend(page);
+});
+
 test('the upload tab opens a dialog that fits the screen', async ({ page }) => {
 	await tabs(page).getByRole('button', { name: 'Subir' }).tap();
 	const dialog = page.getByRole('dialog', { name: 'Subir fotos' });
