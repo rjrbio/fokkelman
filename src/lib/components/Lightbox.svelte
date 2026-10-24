@@ -18,6 +18,8 @@
 		onPrev,
 		onNext,
 		onToggleFavorite,
+		onShare,
+		shareReady,
 		notes
 	}: {
 		photo: Photo;
@@ -31,6 +33,9 @@
 		onPrev?: () => void;
 		onNext?: () => void;
 		onToggleFavorite: () => void;
+		/** Shows a Share button in the panel (see `PhotoPanel`). */
+		onShare?: () => void;
+		shareReady?: boolean;
 		/** Shown in the panel, under the buttons. */
 		notes?: Snippet;
 	} = $props();
@@ -169,6 +174,8 @@
 			{position}
 			{onClose}
 			{onToggleFavorite}
+			{onShare}
+			{shareReady}
 			onToggleFullscreen={enterImmersive}
 			{notes}
 		/>

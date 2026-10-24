@@ -13,6 +13,8 @@
 		onClose,
 		onToggleFavorite,
 		onToggleFullscreen,
+		onShare,
+		shareReady = false,
 		notes
 	}: {
 		photo: Photo;
@@ -22,6 +24,10 @@
 		onClose: () => void;
 		onToggleFavorite: () => void;
 		onToggleFullscreen: () => void;
+		/** Shows a Share button. The public demo passes none: its photos have no page of their own to link to. */
+		onShare?: () => void;
+		/** The photo is ready to be shared as a file (no network needed when the button is pressed). */
+		shareReady?: boolean;
 		/** What the page wants to show about the photo besides its file data (the family area puts the caption, year and people here). */
 		notes?: Snippet;
 	} = $props();
@@ -47,6 +53,12 @@
 			<Icon name="download" />
 			{m.download}
 		</a>
+		{#if onShare}
+			<button class="action" data-action="share" data-ready={shareReady} onclick={onShare}>
+				<Icon name="share" />
+				{m.share}
+			</button>
+		{/if}
 		<button class="action" data-action="fullscreen" onclick={onToggleFullscreen}>
 			<Icon name="expand" />
 			{m.enterFullscreen}

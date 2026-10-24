@@ -277,6 +277,14 @@ test.describe('viewer', () => {
 		await expect(starButton(page)).toBeVisible();
 	});
 
+	test('has a Share button in the sheet, big enough for a finger', async ({ page }) => {
+		const share = viewerDialog(page).getByRole('button', { name: 'Compartir' });
+		await expect(share).toBeVisible();
+		const box = (await share.boundingBox())!;
+		expect(box.height).toBeGreaterThanOrEqual(44);
+		expect(box.x + box.width).toBeLessThanOrEqual(412);
+	});
+
 	test('a double tap goes full screen and a tap comes back', async ({ page }) => {
 		const box = (await page.getByTestId('zoomable').boundingBox())!;
 		const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };

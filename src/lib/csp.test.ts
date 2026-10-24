@@ -17,7 +17,8 @@ afterEach(() => {
 	vi.resetModules();
 });
 
-const STRICT_CONNECT_SRC = ['self', 'https://api.cloudinary.com'];
+// The CDN is there so that the page can read a photo to share it as a file (see `share.ts`).
+const STRICT_CONNECT_SRC = ['self', 'https://api.cloudinary.com', 'https://res.cloudinary.com'];
 
 describe.each([
 	{ label: 'production', nodeEnv: 'production' as string | undefined, connectSrc: STRICT_CONNECT_SRC },
@@ -30,7 +31,7 @@ describe.each([
 		expect(directives['script-src']).toEqual(['self']);
 	});
 
-	it('limits connect-src to the app, the Cloudinary API and, only under vite dev, websockets', async () => {
+	it('limits connect-src to the app, the Cloudinary API and CDN and, only under vite dev, websockets', async () => {
 		const directives = await loadDirectives(nodeEnv);
 		expect(directives['connect-src']).toEqual(connectSrc);
 	});

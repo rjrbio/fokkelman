@@ -43,6 +43,7 @@ export const es = {
 		next: 'Foto siguiente',
 		favorite: 'Favorita',
 		download: 'Descargar',
+		share: 'Compartir',
 		enterFullscreen: 'Pantalla completa',
 		exitFullscreen: 'Salir de pantalla completa',
 		details: 'Detalles',
@@ -174,6 +175,8 @@ export const es = {
 		heading: 'Fotos de la familia',
 		favoriteFailed: (publicId: string) =>
 			`No se pudo actualizar el favorito de ${publicId}. Inténtalo de nuevo.`,
+		linkCopied: 'Enlace copiado',
+		shareFailed: 'No se pudo compartir la foto. Inténtalo de nuevo.',
 		favoritesFailed: (photos: number) =>
 			`No se pudo actualizar el favorito de ${photos} fotos. Inténtalo de nuevo.`,
 		annotateFailed: (photos: number) =>
@@ -224,6 +227,7 @@ export const en: SharedMessages & { demo: DemoMessages } = {
 		next: 'Next photo',
 		favorite: 'Favorite',
 		download: 'Download',
+		share: 'Share',
 		enterFullscreen: 'Full screen',
 		exitFullscreen: 'Exit full screen',
 		details: 'Details',

@@ -8,7 +8,8 @@ const TINY_PNG = Buffer.from(
 
 export async function stubCdnImages(page: Page): Promise<void> {
 	await page.route('https://res.cloudinary.com/**', (route) =>
-		route.fulfill({ contentType: 'image/png', body: TINY_PNG })
+		// The real CDN lets any page read its images (the share button fetches one); the stub has to as well.
+		route.fulfill({ contentType: 'image/png', body: TINY_PNG, headers: { 'Access-Control-Allow-Origin': '*' } })
 	);
 }
 

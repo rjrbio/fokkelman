@@ -10,6 +10,8 @@
 	import { toggleFavorite, withFavoriteOverrides } from '$lib/favorites.svelte';
 	import { filterPhotos, filtersFromSearchParams, sortPhotos } from '$lib/filterPhotos';
 	import { es } from '$lib/messages';
+	import { showNotice } from '$lib/notices.svelte';
+	import { canShareFiles, prepareShareFile, sharePhoto } from '$lib/share';
 	import type { Photo } from '$lib/types';
 
 	const m = es.viewer;
@@ -45,6 +47,39 @@
 			noScroll: true,
 			keepFocus: true
 		});
+	}
+
+	// The picture to share is fetched ahead of time, once the person has stayed on the photo a moment: some
+	// browsers only let a share start close to the press, and a download in between would be too late.
+	// Only on devices that can share files; elsewhere the link is what is shared.
+	const SHARE_PREPARE_DELAY_MS = 500;
+	let shareFile = $state<{ publicId: string; file: File } | null>(null);
+	const shareReady = $derived(shareFile !== null && shareFile.publicId === photo?.publicId);
+	// Keyed on the photo's id alone: a star or a new description makes a new `photo` object, and that must not
+	// throw away a picture that is already fetched (nor leave the button unready for another half second).
+	const sharedId = $derived(photo?.publicId);
+
+	$effect(() => {
+		shareFile = null;
+		const current = untrack(() => photo);
+		if (!sharedId || !current || !canShareFiles(navigator)) return;
+		const controller = new AbortController();
+		const timer = setTimeout(async () => {
+			const file = await prepareShareFile(cloudName, current, fetch, controller.signal);
+			if (file && !controller.signal.aborted) shareFile = { publicId: current.publicId, file };
+		}, SHARE_PREPARE_DELAY_MS);
+		return () => {
+			clearTimeout(timer);
+			controller.abort();
+		};
+	});
+
+	async function onShare() {
+		if (!photo) return;
+		const file = shareFile?.publicId === photo.publicId ? shareFile.file : null;
+		const outcome = await sharePhoto(photo, file, { navigator, origin: location.origin });
+		if (outcome === 'copied') showNotice(es.app.linkCopied);
+		else if (outcome === 'failed') showNotice(es.app.shareFailed);
 	}
 
 	async function onSaveNotes(patch: AnnotationPatch) {
@@ -84,6 +119,8 @@
 		onPrev={index > 0 ? () => goTo(index - 1) : undefined}
 		onNext={index < list.length - 1 ? () => goTo(index + 1) : undefined}
 		{onToggleFavorite}
+		{onShare}
+		{shareReady}
 	>
 		{#snippet notes()}
 			<!-- Keyed: another photo starts with its own, closed, editor. -->

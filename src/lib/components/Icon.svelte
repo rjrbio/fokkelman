@@ -10,7 +10,8 @@
 		| 'search'
 		| 'upload'
 		| 'photos'
-		| 'more';
+		| 'more'
+		| 'share';
 
 	let { name, filled = false, size = 20 }: { name: IconName; filled?: boolean; size?: number } = $props();
 
@@ -25,7 +26,8 @@
 		search: 'M11 5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM20 20l-4.5-4.5',
 		upload: 'M12 16V5m0 0L8 9m4-4l4 4M5 20h14',
 		photos: 'M4 5h7v6H4zM13 5h7v6h-7zM4 13h7v6H4zM13 13h7v6h-7z',
-		more: 'M5 12h.01M12 12h.01M19 12h.01'
+		more: 'M5 12h.01M12 12h.01M19 12h.01',
+		share: 'M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4'
 	};
 </script>
 

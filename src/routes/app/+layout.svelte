@@ -30,6 +30,7 @@
 		uniqueFolders
 	} from '$lib/filterPhotos';
 	import { es } from '$lib/messages';
+	import { notice } from '$lib/notices.svelte';
 	import { clearSelection, selectMany, selected, toggleSelected } from '$lib/selection.svelte';
 
 	let { data, children } = $props();
@@ -165,6 +166,9 @@
 				: es.app.favoriteFailed(favoriteFailure.publicId)}
 		</p>
 	{/if}
+	{#if notice.text}
+		<p class="toast info" role="status">{notice.text}</p>
+	{/if}
 	{#if annotationFailure.problem}
 		<p class="toast" role="alert">
 			{annotationFailure.problem === 'too-many-people'
@@ -212,5 +216,10 @@
 		border-radius: 999px;
 		background: var(--danger);
 		color: var(--on-accent);
+	}
+	.toast.info {
+		background: var(--chip);
+		color: var(--fg);
+		border: 1px solid var(--line);
 	}
 </style>
