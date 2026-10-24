@@ -1,12 +1,16 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import PhotoGrid from '$lib/components/PhotoGrid.svelte';
+	import SeoHead from '$lib/components/SeoHead.svelte';
 	import { getDemoFavorites, toggleDemoFavorite } from '$lib/demoFavorites';
 	import { filterPhotos, NO_FILTERS } from '$lib/filterPhotos';
 	import { setMessages } from '$lib/i18n';
 	import { en } from '$lib/messages';
+	import { SCREENS } from '$lib/screens';
+	import { pageSeo } from '$lib/seo';
 	import type { Photo } from '$lib/types';
 
 	let { data } = $props();
@@ -14,6 +18,15 @@
 	// The public demo is in English; the family area is in Spanish.
 	setMessages(en);
 	const m = en.demo;
+	const seo = $derived(
+		pageSeo({
+			origin: page.url.origin,
+			path: '/demo',
+			title: m.title,
+			description: m.description,
+			image: SCREENS.og
+		})
+	);
 
 	let favorites = $state(browser ? getDemoFavorites() : new Set<string>());
 	let query = $state('');
@@ -32,6 +45,7 @@
 </script>
 
 <svelte:head><title>{m.title}</title></svelte:head>
+<SeoHead {seo} />
 
 <div class="banner" role="region" aria-label={m.noticeLabel}>
 	<strong>{m.banner}</strong>

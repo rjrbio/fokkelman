@@ -199,6 +199,8 @@ export type SharedMessages = Pick<Messages, 'error' | 'grid' | 'viewer'>;
 
 export interface DemoMessages {
 	title: string;
+	/** For the link preview of the demo (`<meta name="description">`, Open Graph, Twitter). */
+	description: string;
 	heading: string;
 	noticeLabel: string;
 	banner: string;
@@ -248,6 +250,7 @@ export const en: SharedMessages & { demo: DemoMessages } = {
 	},
 	demo: {
 		title: 'Demo · Fokkelman Photo Vault',
+		description: 'Try the real gallery and viewer on public sample photos — favorites stay in your browser.',
 		heading: 'Sample photo gallery',
 		noticeLabel: 'Demo notice',
 		banner: 'Demo mode.',
