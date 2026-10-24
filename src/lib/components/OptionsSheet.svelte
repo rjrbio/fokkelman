@@ -101,6 +101,9 @@
 		z-index: 61;
 		display: grid;
 		gap: 1rem;
+		max-height: 90dvh;
+		overflow-y: auto;
+		overscroll-behavior: contain;
 		padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
 		border-radius: 16px 16px 0 0;
 		border-top: 1px solid var(--line);

@@ -184,6 +184,30 @@ test('the options sheet filters by person, decade and what is not identified, an
 	await resetBackend(page);
 });
 
+test('the options sheet scrolls on a short screen, so that nothing in it is out of reach', async ({ page }) => {
+	await page.setViewportSize({ width: 412, height: 360 }); // a phone on its side, or with large text
+	await page.getByRole('button', { name: 'Opciones' }).tap();
+	const sheet = page.getByRole('dialog', { name: 'Opciones' });
+	await expect(sheet).toBeVisible();
+
+	const { clientHeight, scrollHeight, top } = await sheet.evaluate((element) => ({
+		clientHeight: element.clientHeight,
+		scrollHeight: element.scrollHeight,
+		top: element.getBoundingClientRect().top
+	}));
+	expect(top).toBeGreaterThanOrEqual(0); // it does not grow past the top edge
+	expect(scrollHeight).toBeGreaterThan(clientHeight); // what does not fit scrolls
+
+	for (const target of [
+		sheet.getByRole('button', { name: 'Cerrar' }),
+		sheet.getByLabel('Persona'),
+		sheet.getByRole('button', { name: /^Ver [\d.]+ fotos?$/ })
+	]) {
+		await target.scrollIntoViewIfNeeded();
+		await expect(target).toBeInViewport({ ratio: 1 });
+	}
+});
+
 test('the upload tab opens a dialog that fits the screen', async ({ page }) => {
 	await tabs(page).getByRole('button', { name: 'Subir' }).tap();
 	const dialog = page.getByRole('dialog', { name: 'Subir fotos' });
