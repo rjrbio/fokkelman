@@ -5,6 +5,7 @@ import {
 	clearAnnotationOverrides,
 	dismissAnnotationFailure,
 	saveAnnotation,
+	saveAnnotationInBatches,
 	withAnnotationOverrides
 } from './annotate.svelte';
 import { noAnnotation } from './annotations';
@@ -164,5 +165,80 @@ describe('saveAnnotation', () => {
 		await saveAnnotation(base, { caption: 'x' }, answer({ updated: [], failed: [] }));
 		clearAnnotationOverrides();
 		expect(withAnnotationOverrides(base)).toBe(base);
+	});
+});
+
+describe('saveAnnotationInBatches', () => {
+	const crowd = (n: number) => Array.from({ length: n }, (_, i) => photo(`p${i}`));
+	const ok = (ids: string[]) => Response.json({ updated: ids.map((publicId) => ({ publicId, annotation: { caption: 'x', year: null, people: [] } })), failed: [] });
+
+	it('sends the photos 200 at a time, one request after another, and says how far it got', async () => {
+		const sent: number[] = [];
+		const send = vi.fn(async (ids: string[]) => {
+			sent.push(ids.length);
+			return ok(ids);
+		});
+		const progress: [number, number][] = [];
+
+		const outcome = await saveAnnotationInBatches(crowd(450), { caption: 'x' }, send, (done, total) => progress.push([done, total]));
+
+		expect(outcome).toBe('done');
+		expect(sent).toEqual([200, 200, 50]);
+		expect(progress).toEqual([[200, 450], [400, 450], [450, 450]]);
+		expect(annotationOf('p449', crowd(450)).caption).toBe('x');
+	});
+
+	it('tells the failures of all the groups once, with the total, and keeps what was saved', async () => {
+		let call = 0;
+		const send = async (ids: string[]) => (++call === 2 ? new Response(null, { status: 500 }) : ok(ids));
+		const base = crowd(450);
+
+		const outcome = await saveAnnotationInBatches(base, { caption: 'x' }, send);
+
+		expect(outcome).toBe('failed');
+		expect(annotationFailure).toEqual({ problem: 'failed', count: 200 });
+		expect(annotationOf('p0', base).caption).toBe('x'); // first group, saved
+		expect(annotationOf('p250', base).caption).toBe(''); // second group, taken back
+		expect(annotationOf('p449', base).caption).toBe('x'); // third group, saved
+	});
+
+	it('adds up the photos of every group that failed', async () => {
+		let call = 0;
+		const send = async (ids: string[]) => (++call === 2 ? ok(ids) : new Response(null, { status: 500 }));
+
+		await saveAnnotationInBatches(crowd(450), { caption: 'x' }, send);
+
+		expect(annotationFailure).toEqual({ problem: 'failed', count: 250 }); // 200 + 50
+	});
+
+	it('stops when the session has expired, keeping what was saved before', async () => {
+		let call = 0;
+		const send = vi.fn(async (ids: string[]) => (++call === 2 ? new Response(null, { status: 401 }) : ok(ids)));
+		const base = crowd(450);
+
+		expect(await saveAnnotationInBatches(base, { caption: 'x' }, send)).toBe('unauthorized');
+
+		expect(send).toHaveBeenCalledTimes(2);
+		expect(annotationOf('p0', base).caption).toBe('x');
+		expect(annotationOf('p250', base).caption).toBe('');
+		expect(annotationFailure.problem).toBeNull();
+	});
+
+	it('does nothing for a photo that has a save in flight', async () => {
+		const base = crowd(3);
+		let release!: (r: Response) => void;
+		const slow = vi.fn(() => new Promise<Response>((resolve) => (release = resolve)));
+		const first = saveAnnotation([base[0]], { caption: 'a' }, slow);
+
+		expect(await saveAnnotationInBatches(base, { caption: 'x' }, vi.fn())).toBe('busy');
+
+		release(Response.json({ updated: [], failed: [] }));
+		await first;
+	});
+
+	it('asks nothing when no photo changes, and does not report progress for nothing', async () => {
+		const send = vi.fn();
+		expect(await saveAnnotationInBatches([], { caption: 'x' }, send)).toBe('done');
+		expect(send).not.toHaveBeenCalled();
 	});
 });

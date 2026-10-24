@@ -4,8 +4,12 @@
 	import {
 		annotationFailure,
 		clearAnnotationOverrides,
+		saveAnnotationInBatches,
+		type SaveOutcome,
 		withAnnotationOverrides
 	} from '$lib/annotate.svelte';
+	import { postAnnotation } from '$lib/annotateApi';
+	import BulkEditDialog from '$lib/components/BulkEditDialog.svelte';
 	import PhotoGrid from '$lib/components/PhotoGrid.svelte';
 	import SelectionBar from '$lib/components/SelectionBar.svelte';
 	import TopBar from '$lib/components/TopBar.svelte';
@@ -15,7 +19,7 @@
 		favoriteFailure,
 		withFavoriteOverrides
 	} from '$lib/favorites.svelte';
-	import { knownPeople } from '$lib/annotations';
+	import { knownPeople, type AnnotationPatch } from '$lib/annotations';
 	import {
 		decadesOf,
 		filterPhotos,
@@ -53,6 +57,21 @@
 
 	let showUpload = $state(false);
 
+	// The bulk edit: what is picked, with what each photo has now, and the dialog that sets the same thing for all.
+	let bulkMode = $state<'year' | 'caption' | 'people' | null>(null);
+	const pickedPhotos = $derived(photos.filter((p) => selected.has(p.publicId)));
+
+	async function applyBulk(
+		patch: AnnotationPatch,
+		onProgress: (done: number, total: number) => void
+	): Promise<SaveOutcome> {
+		const outcome = await saveAnnotationInBatches(pickedPhotos, patch, postAnnotation, onProgress);
+		if (outcome === 'unauthorized') {
+			await goto(`/login?next=${encodeURIComponent(page.url.pathname + page.url.search)}`);
+		}
+		return outcome;
+	}
+
 	async function onUploadClosed(uploadedCount: number) {
 		showUpload = false;
 		if (uploadedCount > 0) await invalidate('app:photos');
@@ -67,6 +86,7 @@
 		total={filtered.length}
 		onSelectAll={() => selectMany(filtered.map((p) => p.publicId))}
 		onClear={clearSelection}
+		onBulk={(mode) => (bulkMode = mode)}
 	/>
 {:else}
 	<TopBar
@@ -98,6 +118,19 @@
 		onToggleSelect={toggleSelected}
 	/>
 </main>
+
+{#if bulkMode}
+	<BulkEditDialog
+		mode={bulkMode}
+		photos={pickedPhotos}
+		suggestions={knownPeople(photos)}
+		onApply={applyBulk}
+		onClose={(applied) => {
+			bulkMode = null;
+			if (applied) clearSelection();
+		}}
+	/>
+{/if}
 
 {#if showUpload}
 	<UploadModal folder={filters.folder} onClose={onUploadClosed} />
@@ -146,7 +179,7 @@
 		left: 50%;
 		bottom: 1.5rem;
 		transform: translateX(-50%);
-		z-index: 150; /* above the viewer overlay */
+		z-index: 250; /* above the viewer overlay (100) and the dialogs (200): a failure must be seen, not dimmed behind the scrim */
 		display: grid;
 		gap: 0.5rem;
 		justify-items: center;

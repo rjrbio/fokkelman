@@ -372,6 +372,41 @@ test.describe('selecting on a phone', () => {
 		expect(overflow).toBeLessThanOrEqual(0);
 	});
 
+	test('the bulk edit dialog fits the screen, works with taps and its controls are big enough for a finger', async ({ page }) => {
+		await longPress(page, page.getByRole('button', { name: 'Abrir Sample_001' }));
+		await page.getByRole('button', { name: 'Seleccionar Sample_002' }).tap();
+		await bar(page).getByRole('button', { name: 'Personas…' }).tap();
+		const dialog = page.getByRole('dialog', { name: 'Editar 2 fotos' });
+		await expect(dialog).toBeVisible();
+
+		const fits = await dialog.evaluate((node) => {
+			const box = node.getBoundingClientRect();
+			return box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight;
+		});
+		expect(fits).toBe(true);
+		const small = await dialog.evaluate((node) =>
+			[...node.querySelectorAll<HTMLElement>('button:not(.chip-remove), input:not([type=checkbox]), textarea')]
+				.filter((el) => el.getClientRects().length > 0 && !el.classList.contains('sr-only'))
+				.map((el) => ({ name: el.getAttribute('aria-label') ?? el.id ?? el.textContent?.trim() ?? '', box: el.getBoundingClientRect() }))
+				.filter(({ box }) => box.height < 44)
+				.map(({ name, box }) => `${name || '(sin nombre)'}: ${Math.round(box.width)}×${Math.round(box.height)}`)
+		);
+		expect(small).toEqual([]);
+
+		await dialog.getByLabel('Añadir a todas').fill('Marta');
+		await page.keyboard.press('Enter');
+		await dialog.getByRole('button', { name: 'Aplicar a 2 fotos' }).tap();
+		await expect(bar(page)).toHaveCount(0);
+		expect(await storedContext('Sample_001')).toEqual({ people: 'Marta' });
+	});
+
+	test('has nothing wrong for a screen reader with the bulk edit dialog open', async ({ page }) => {
+		await longPress(page, page.getByRole('button', { name: 'Abrir Sample_001' }));
+		await bar(page).getByRole('button', { name: 'Año…' }).tap();
+		await expect(page.getByRole('dialog', { name: 'Editar 1 foto' })).toBeVisible();
+		await expectNoA11yViolations(page);
+	});
+
 	test('has nothing wrong for a screen reader while photos are picked', async ({ page }) => {
 		await longPress(page, page.getByRole('button', { name: 'Abrir Sample_001' }));
 		await expect(bar(page)).toBeVisible();

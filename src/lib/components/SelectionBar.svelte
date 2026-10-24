@@ -5,7 +5,8 @@
 		count,
 		total,
 		onSelectAll,
-		onClear
+		onClear,
+		onBulk
 	}: {
 		/** How many photos are picked. */
 		count: number;
@@ -13,6 +14,8 @@
 		total: number;
 		onSelectAll: () => void;
 		onClear: () => void;
+		/** Opens the dialog that sets a year, people or a description for everything picked. */
+		onBulk: (mode: 'year' | 'people' | 'caption') => void;
 	} = $props();
 
 	const m = es.selection;
@@ -34,6 +37,9 @@
 		{#if count < total}
 			<button class="pill" onclick={onSelectAll}>{m.selectAll(total)}</button>
 		{/if}
+		<button class="pill" aria-haspopup="dialog" onclick={() => onBulk('year')}>{m.year}</button>
+		<button class="pill" aria-haspopup="dialog" onclick={() => onBulk('people')}>{m.people}</button>
+		<button class="pill" aria-haspopup="dialog" onclick={() => onBulk('caption')}>{m.caption}</button>
 		<button class="pill clear" onclick={onClear}>{m.clear}</button>
 	</div>
 </header>

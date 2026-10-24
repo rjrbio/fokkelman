@@ -5,6 +5,7 @@
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import PhotoNotes from '$lib/components/PhotoNotes.svelte';
 	import { saveAnnotation, withAnnotationOverrides } from '$lib/annotate.svelte';
+	import { postAnnotation } from '$lib/annotateApi';
 	import { knownPeople, type AnnotationPatch } from '$lib/annotations';
 	import { toggleFavorite, withFavoriteOverrides } from '$lib/favorites.svelte';
 	import { filterPhotos, filtersFromSearchParams, sortPhotos } from '$lib/filterPhotos';
@@ -48,15 +49,7 @@
 
 	async function onSaveNotes(patch: AnnotationPatch) {
 		if (!photo) return 'failed' as const;
-		const outcome = await saveAnnotation([photo], patch, (publicIds, body) =>
-			fetch('/api/annotate', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ publicIds, patch: body }),
-				// Clearing a field takes two calls to Cloudinary: give it longer than a favorite.
-				signal: AbortSignal.timeout(30000)
-			})
-		);
+		const outcome = await saveAnnotation([photo], patch, postAnnotation);
 		if (outcome === 'unauthorized') {
 			await goto(`/login?next=${encodeURIComponent(page.url.pathname + page.url.search)}`);
 		}

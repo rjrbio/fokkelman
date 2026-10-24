@@ -373,3 +373,27 @@ describe('annotatePhotos', () => {
 		});
 	});
 });
+
+describe('the time of a request', () => {
+	afterEach(() => vi.useRealTimers());
+
+	it('counts the time the read took against the time left for the writes', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(0);
+		// Three photos that end up with different people, so three groups of writes, each taking 2 s; the read took 5 s.
+		library = [photo('a', { people: ['A'] }), photo('b', { people: ['B'] }), photo('c', { people: ['C'] })];
+		const passTime = (ms: number) => vi.setSystemTime(Date.now() + ms);
+		const read = cloudinary.getContexts.getMockImplementation()!;
+		cloudinary.getContexts.mockImplementation(async (...args: unknown[]) => {
+			passTime(5000);
+			return (read as (...a: unknown[]) => Promise<unknown>)(...args);
+		});
+		cloudinary.updateContext.mockImplementation(async () => passTime(2000));
+
+		const outcome = await annotatePhotos(['a', 'b', 'c'], { addPeople: ['Z'] });
+
+		// 8 s in all, 5 spent reading: 3 s for the writes, so the third group does not start (it would, with 6 s).
+		expect(cloudinary.updateContext).toHaveBeenCalledTimes(2);
+		expect(outcome).toMatchObject({ status: 'done', failed: ['c'] });
+	});
+});

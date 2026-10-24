@@ -5,6 +5,7 @@
  */
 
 const pluralEs = (n: number, one: string, many: string) => (n === 1 ? one : many);
+const photosEs = (n: number) => (n === 1 ? '1 foto' : `${n.toLocaleString('es-ES')} fotos`);
 
 export const es = {
 	brand: 'Fokkelman',
@@ -101,7 +102,40 @@ export const es = {
 		count: (n: number) => (n === 1 ? '1 seleccionada' : `${n.toLocaleString('es-ES')} seleccionadas`),
 		selectAll: (n: number) => `Seleccionar las ${n.toLocaleString('es-ES')}`,
 		selectUnidentified: (n: number) => `Seleccionar las ${n.toLocaleString('es-ES')} sin identificar`,
-		clear: 'Cancelar selección'
+		clear: 'Cancelar selección',
+		year: 'Año…',
+		people: 'Personas…',
+		caption: 'Descripción…'
+	},
+	bulk: {
+		title: (n: number) => `Editar ${photosEs(n)}`,
+		year: {
+			label: 'Año',
+			hint: 'Por ejemplo, 1975',
+			apply: (n: number) => `Poner el año a ${photosEs(n)}`,
+			clear: (n: number) => `Quitar el año a ${photosEs(n)}`
+		},
+		caption: {
+			label: 'Descripción',
+			empty: 'Escribe la descripción, o quita la que tienen.',
+			apply: (n: number) => `Poner la descripción a ${photosEs(n)}`,
+			clear: (n: number) => `Quitar la descripción a ${photosEs(n)}`
+		},
+		people: {
+			add: 'Añadir a todas',
+			addPerson: 'Añadir persona',
+			addPersonHint: 'Escribe un nombre y pulsa Intro',
+			remove: 'Quitar de todas',
+			removeOption: (name: string, count: number) => `${name} (${count})`,
+			nobody: 'Ninguna de las fotos tiene personas.',
+			removePerson: (name: string) => `Quitar a ${name}`,
+			nothing: 'Elige a quién añadir o a quién quitar.',
+			apply: (n: number) => `Aplicar a ${photosEs(n)}`
+		},
+		saving: 'Guardando…',
+		progress: (done: number, total: number) =>
+			`${done.toLocaleString('es-ES')} de ${total.toLocaleString('es-ES')}`,
+		cancel: 'Cancelar'
 	},
 	notes: {
 		heading: 'Datos de la foto',

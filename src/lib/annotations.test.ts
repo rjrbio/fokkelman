@@ -6,6 +6,7 @@ import {
 	cleanText,
 	fold,
 	knownPeople,
+	peopleCounts,
 	MAX_CAPTION_LENGTH,
 	MAX_PEOPLE_LENGTH,
 	MAX_PERSON_LENGTH,
@@ -318,5 +319,22 @@ describe('knownPeople', () => {
 
 	it('counts the same name written with another case or accent as one, keeping the first spelling', () => {
 		expect(knownPeople([{ people: ['María'] }, { people: ['maria'] }, { people: ['MARÍA'] }])).toEqual(['María']);
+	});
+});
+
+describe('peopleCounts', () => {
+	it('counts the photos each person is in, the most first, merging spellings that fold to the same name', () => {
+		const photos = [
+			{ people: ['Ana', 'Luis'] },
+			{ people: ['ana'] },
+			{ people: ['María'] },
+			{ people: ['Luis', 'Ana'] }
+		];
+		expect(peopleCounts(photos)).toEqual([
+			{ name: 'Ana', count: 3 },
+			{ name: 'Luis', count: 2 },
+			{ name: 'María', count: 1 }
+		]);
+		expect(peopleCounts([])).toEqual([]);
 	});
 });

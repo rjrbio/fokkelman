@@ -40,6 +40,19 @@ test('the gallery with photos picked, and the shortcut for the ones not identifi
 	await expectNoA11yViolations(page);
 });
 
+test('the bulk edit dialogs, for the year, the people and the description', async ({ page }) => {
+	await login(page);
+	await hydrated(page);
+	await page.locator('label.pick').first().click();
+	const bar = page.getByRole('group', { name: 'Fotos seleccionadas' });
+	for (const [button, label] of [['Año…', 'Año'], ['Personas…', 'Añadir a todas'], ['Descripción…', 'Descripción']]) {
+		await bar.getByRole('button', { name: button }).click();
+		await page.getByRole('dialog', { name: 'Editar 1 foto' }).getByLabel(label).waitFor();
+		await expectNoA11yViolations(page);
+		await page.keyboard.press('Escape');
+	}
+});
+
 test('the viewer', async ({ page }) => {
 	await login(page);
 	await hydrated(page);

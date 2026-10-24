@@ -239,8 +239,8 @@ export function applyAnnotationOverrides<T extends Annotation & { publicId: stri
 	});
 }
 
-/** Every name used in the library, the most used first, for suggestions. */
-export function knownPeople(photos: Pick<Annotation, 'people'>[]): string[] {
+/** Every name used in `photos` with how many photos it is in, the most used first (then alphabetically). */
+export function peopleCounts(photos: Pick<Annotation, 'people'>[]): { name: string; count: number }[] {
 	const counts = new Map<string, { name: string; count: number }>();
 	for (const { people } of photos) {
 		for (const name of people) {
@@ -249,7 +249,9 @@ export function knownPeople(photos: Pick<Annotation, 'people'>[]): string[] {
 			else counts.set(fold(name), { name, count: 1 });
 		}
 	}
-	return [...counts.values()]
-		.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'es'))
-		.map((entry) => entry.name);
+	return [...counts.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'es'));
 }
+
+/** Every name used in the library, the most used first, for suggestions. */
+export const knownPeople = (photos: Pick<Annotation, 'people'>[]): string[] =>
+	peopleCounts(photos).map((entry) => entry.name);

@@ -17,6 +17,11 @@ export const MAX_CONTEXT_CALLS = 60;
  * `replace`, which would leave the photos with an empty context.
  */
 export const WRITE_BUDGET_MS = 6000;
+/**
+ * How long a whole request to `/api/annotate` may take before it stops starting writes: the time spent
+ * reading the current contexts counts, since a serverless function is cut off at about 10 s.
+ */
+export const REQUEST_BUDGET_MS = 8000;
 
 type Entries = Record<string, string>;
 

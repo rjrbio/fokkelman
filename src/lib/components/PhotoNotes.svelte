@@ -1,16 +1,9 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import type { SaveOutcome } from '$lib/annotate.svelte';
-	import {
-		MAX_CAPTION_LENGTH,
-		MAX_PERSON_LENGTH,
-		MIN_YEAR,
-		patchFromDraft,
-		type AnnotationPatch,
-		type DraftField,
-		type PatchProblem
-	} from '$lib/annotations';
+	import { patchFromDraft, type AnnotationPatch, type DraftField, type PatchProblem } from '$lib/annotations';
 	import { es } from '$lib/messages';
+	import { problemText } from '$lib/problemText';
 	import type { Photo } from '$lib/types';
 	import PeopleInput from './PeopleInput.svelte';
 
@@ -90,23 +83,6 @@
 		saving = false;
 		// When it did not work the form stays as it was, to try again; the page says what went wrong.
 		if (outcome === 'done') await stopEditing();
-	}
-
-	function problemText(problem: PatchProblem): string {
-		switch (problem) {
-			case 'caption-too-long':
-				return m.problem.captionTooLong(MAX_CAPTION_LENGTH);
-			case 'has-backslash':
-				return m.problem.hasBackslash;
-			case 'year-out-of-range':
-				return m.problem.year(MIN_YEAR, new Date().getFullYear());
-			case 'person-too-long':
-				return m.problem.personTooLong(MAX_PERSON_LENGTH);
-			case 'too-many-people':
-				return m.problem.tooManyPeople;
-			default:
-				return m.problem.other;
-		}
 	}
 </script>
 

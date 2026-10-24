@@ -1,7 +1,14 @@
 import { env } from '$env/dynamic/private';
 import type { Annotation, AnnotationPatch } from '$lib/annotations';
 import type { Photo } from '$lib/types';
-import { CONTEXT_BATCH, chunks, planAnnotation, withChange, writeOperations } from './annotate';
+import {
+	CONTEXT_BATCH,
+	REQUEST_BUDGET_MS,
+	chunks,
+	planAnnotation,
+	withChange,
+	writeOperations
+} from './annotate';
 import { getContexts, searchAllPhotos, setFavorite, type CloudinaryConfig } from './cloudinary';
 import { withContext } from './context';
 import { createIndexCache, withFavorite } from './photoIndex';
@@ -80,6 +87,7 @@ export async function annotatePhotos(
 	publicIds: string[],
 	patch: AnnotationPatch
 ): Promise<AnnotateOutcome> {
+	const startedAt = Date.now();
 	const { photos } = await getFamilyIndex();
 	const byId = new Map(photos.map((photo) => [photo.publicId, photo]));
 	const targets: Photo[] = [];
@@ -124,7 +132,9 @@ export async function annotatePhotos(
 	const plan = planAnnotation(fresh, patch);
 	if (!plan.ok) return { status: 'rejected', problem: plan.problem };
 
-	const { done, failed: notWritten } = await writeOperations(cfg, plan.operations);
+	// What the reading took is not there for the writing: the whole request has to end before the function is cut off.
+	const writeBudget = Math.max(0, REQUEST_BUDGET_MS - (Date.now() - startedAt));
+	const { done, failed: notWritten } = await writeOperations(cfg, plan.operations, writeBudget);
 	const written = new Map(plan.changes.filter((c) => done.includes(c.publicId)).map((c) => [c.publicId, c]));
 	const unchanged = new Set(plan.unchanged);
 	familyCache.patch((all) =>
