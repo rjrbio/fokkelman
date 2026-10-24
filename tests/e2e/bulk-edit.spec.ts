@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { login, resetBackend, storedContext, stubCdnImages } from './helpers';
+import { login, resetBackend, storedContext, stubCdnImages, toastStacking } from './helpers';
 
 // The mock comes with Sample_002 (caption, Ana and Luis), Sample_004 (Ana) and Sample_006 (a key that is
 // not ours); the rest have nothing.
@@ -140,6 +140,23 @@ test('Esc closes the dialog and keeps the selection; a second Esc ends the selec
 	await expect(bar(page)).toHaveCount(0);
 });
 
+test('when the selection ends under the open dialog, the dialog goes with it and does not come back with the next photo picked', async ({ page }) => {
+	await page.getByRole('combobox', { name: 'Persona' }).selectOption('Ana');
+	await pickPhotos(page, 'Sample_002');
+	await bar(page).getByRole('button', { name: 'Año…' }).click();
+	await expect(dialog(page, 1)).toBeVisible();
+
+	await page.goBack(); // another view: what was picked does not follow
+
+	await expect(page).toHaveURL(/\/app$/);
+	await expect(bar(page)).toHaveCount(0);
+	await expect(page.getByRole('dialog')).toHaveCount(0); // not an "Editar 0 fotos"
+
+	await pickPhotos(page, 'Sample_010');
+	await expect(bar(page).getByRole('status')).toHaveText('1 seleccionada');
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
 test('when the save fails it says so, keeps the dialog and the selection, and takes the change back', async ({ page }) => {
 	await page.route('**/api/annotate', (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }));
 	await pickPhotos(page, 'Sample_020', 'Sample_021', 'Sample_022');
@@ -150,11 +167,8 @@ test('when the save fails it says so, keeps the dialog and the selection, and ta
 
 	const toast = page.getByRole('alert').filter({ hasText: 'No se pudieron guardar los datos de 3 fotos' });
 	await expect(toast).toBeVisible();
-	// It is on top of the dialog's dark backdrop, not dimmed behind it.
-	expect(await toast.evaluate((el) => {
-		const { x, y, width, height } = el.getBoundingClientRect();
-		return el.contains(document.elementFromPoint(x + width / 2, y + height / 2));
-	})).toBe(true);
+	// It is on top of the dialog's dark backdrop, not dimmed behind it, and does not take the taps meant for the dialog.
+	expect(await toastStacking(toast)).toEqual({ onTop: true, letsTapsThrough: true });
 	await expect(form).toBeVisible();
 	await expect(form.getByLabel('Año')).toHaveValue('1990');
 	await expect(form.getByRole('button', { name: 'Poner el año a 3 fotos' })).toBeFocused();

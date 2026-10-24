@@ -126,3 +126,21 @@ export async function editContextByHand(publicId: string, context: Record<string
 	});
 	if (!response.ok) throw new Error(`mock context edit failed: ${response.status}`);
 }
+
+/**
+ * Whether a toast is painted above everything under it (a dialog's backdrop included) and still lets a tap
+ * through to what is under it. `elementFromPoint` skips what lets taps through, so the stacking is read with
+ * the toasts switched on for a moment.
+ */
+export function toastStacking(toast: Locator): Promise<{ onTop: boolean; letsTapsThrough: boolean }> {
+	return toast.evaluate((element) => {
+		const box = element.getBoundingClientRect();
+		const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+		const letsTapsThrough = !element.contains(document.elementFromPoint(x, y));
+		const toasts = element.parentElement as HTMLElement;
+		toasts.style.pointerEvents = 'auto';
+		const onTop = element.contains(document.elementFromPoint(x, y));
+		toasts.style.pointerEvents = '';
+		return { onTop, letsTapsThrough };
+	});
+}

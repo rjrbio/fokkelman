@@ -63,6 +63,10 @@
 	// The bulk edit: what is picked, with what each photo has now, and the dialog that sets the same thing for all.
 	let bulkMode = $state<'year' | 'caption' | 'people' | null>(null);
 	const pickedPhotos = $derived(photos.filter((p) => selected.has(p.publicId)));
+	// Nothing left to edit (e.g. Back to another view while the dialog is open): the dialog must not wait for the next photo picked.
+	$effect(() => {
+		if (selected.size === 0) bulkMode = null;
+	});
 
 	const allPickedAreFavorite = $derived(pickedPhotos.length > 0 && pickedPhotos.every((p) => p.favorite));
 
@@ -133,7 +137,7 @@
 	/>
 </main>
 
-{#if bulkMode}
+{#if bulkMode && selected.size > 0}
 	<BulkEditDialog
 		mode={bulkMode}
 		photos={pickedPhotos}
@@ -201,6 +205,8 @@
 		color: var(--fg);
 	}
 	.toasts {
+		/* Only to be read: a tap on a dialog's button under a toast must reach the button. */
+		pointer-events: none;
 		position: fixed;
 		left: 50%;
 		bottom: 1.5rem;

@@ -1,5 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
-import { expectNoA11yViolations, login, resetBackend, starButton, stubCdnImages, viewerDialog } from './helpers';
+import {
+	expectNoA11yViolations,
+	login,
+	resetBackend,
+	starButton,
+	stubCdnImages,
+	toastStacking,
+	viewerDialog
+} from './helpers';
 
 declare global {
 	interface Window {
@@ -203,10 +211,6 @@ test('the notice is seen on top of the viewer, not dimmed behind it', async ({ p
 
 	const notice = page.getByRole('status').filter({ hasText: 'Enlace copiado' });
 	await expect(notice).toBeVisible();
-	const onTop = await notice.evaluate((element) => {
-		const box = element.getBoundingClientRect();
-		return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === element;
-	});
-	expect(onTop).toBe(true);
+	expect(await toastStacking(notice)).toEqual({ onTop: true, letsTapsThrough: true });
 	await expectNoA11yViolations(page); // the viewer with its Share button and the notice over it
 });
