@@ -4,7 +4,7 @@
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import PhotoGrid from '$lib/components/PhotoGrid.svelte';
 	import { getDemoFavorites, toggleDemoFavorite } from '$lib/demoFavorites';
-	import { filterPhotos } from '$lib/filterPhotos';
+	import { filterPhotos, NO_FILTERS } from '$lib/filterPhotos';
 	import { setMessages } from '$lib/i18n';
 	import { en } from '$lib/messages';
 	import type { Photo } from '$lib/types';
@@ -23,7 +23,7 @@
 	const decorated = $derived(
 		data.photos.map((p) => ({ ...p, favorite: favorites.has(p.publicId) }))
 	);
-	const filtered = $derived(filterPhotos(decorated, { folder: '', query, favoritesOnly }));
+	const filtered = $derived(filterPhotos(decorated, { ...NO_FILTERS, query, favoritesOnly }));
 	const index = $derived(filtered.findIndex((p) => p.publicId === openId));
 	const openPhoto = $derived(index >= 0 ? filtered[index] : undefined);
 	const neighbours = $derived(
