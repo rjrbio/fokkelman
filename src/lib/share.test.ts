@@ -110,6 +110,26 @@ describe('sharePhoto', () => {
 		expect(t.navigator.clipboard.writeText).not.toHaveBeenCalled();
 	});
 
+	it('is not a failure when the person closes the share sheet showing the link, and the link is not copied behind their back', async () => {
+		const share = vi.fn().mockRejectedValue(abort());
+		const t = tools({ share });
+
+		expect(await sharePhoto(photo(), null, t)).toBe('cancelled');
+
+		expect(share).toHaveBeenCalledTimes(1);
+		expect(share.mock.calls[0][0].url).toBe('https://fokkelman.example/app/photo/family_uploads/IMG_0001');
+		expect(t.navigator.clipboard.writeText).not.toHaveBeenCalled();
+	});
+
+	it('copies the link when the share sheet fails for a reason other than being closed', async () => {
+		const share = vi.fn().mockRejectedValue(new DOMException('no', 'NotAllowedError'));
+		const t = tools({ share });
+
+		expect(await sharePhoto(photo(), null, t)).toBe('copied');
+
+		expect(t.navigator.clipboard.writeText).toHaveBeenCalledWith('https://fokkelman.example/app/photo/family_uploads/IMG_0001');
+	});
+
 	it('sends the link through the share sheet when there is no file, or files cannot be shared', async () => {
 		const share = vi.fn().mockResolvedValue(undefined);
 

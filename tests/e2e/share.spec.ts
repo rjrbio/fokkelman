@@ -3,6 +3,7 @@ import { expectNoA11yViolations, login, resetBackend, starButton, stubCdnImages,
 
 declare global {
 	interface Window {
+		__shareCalls?: string[];
 		__shared?: { files?: { name: string; type: string; size: number }[]; url?: string; title?: string };
 		__copied?: string;
 	}
@@ -110,19 +111,34 @@ test('copies the link where there is no share sheet, and says so', async ({ page
 	expect(await page.evaluate(() => window.__copied)).toBe('http://localhost:5199/app/photo/Sample_001');
 });
 
-test('closing the share sheet is not an error', async ({ page }) => {
+test('closing the share sheet is not an error: nothing is copied and no notice is shown', async ({ page }) => {
 	await page.addInitScript(() => {
 		navigator.canShare = () => false;
-		navigator.share = async () => {
+		navigator.share = async (data) => {
+			window.__shareCalls = [...(window.__shareCalls ?? []), data?.url ?? ''];
 			throw new DOMException('closed', 'AbortError');
 		};
+		Object.defineProperty(navigator, 'clipboard', {
+			value: { writeText: async (text: string) => void (window.__copied = text) },
+			configurable: true
+		});
 	});
 	await openFirstPhoto(page);
 
 	await shareButton(page).click();
 
-	await expect(page.getByRole('alert')).toHaveCount(0);
-	await expect(page.getByText('Enlace copiado')).toHaveCount(0);
+	// The sheet was asked for the link, and the person closed it.
+	await expect.poll(() => page.evaluate(() => window.__shareCalls)).toEqual(['http://localhost:5199/app/photo/Sample_001']);
+	// Let the page act on the closed sheet (it does so in the same task as the rejection) before looking for what it shows.
+	await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+
+	// Looked at once, not with a retrying assertion: a notice dismisses itself after 3 s, and `toHaveCount(0)` would
+	// simply wait for that and pass.
+	expect(await page.locator('.toasts p').count()).toBe(0); // no notice, no error: nothing at all
+	expect(await page.getByText('Enlace copiado').count()).toBe(0);
+	expect(await page.getByText('No se pudo compartir').count()).toBe(0);
+	expect(await page.getByRole('alert').count()).toBe(0);
+	expect(await page.evaluate(() => window.__copied)).toBeUndefined(); // and the link was not put on the clipboard behind their back
 });
 
 test('says so when it cannot share at all', async ({ page }) => {
