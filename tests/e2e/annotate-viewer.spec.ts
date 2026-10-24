@@ -91,7 +91,7 @@ test('a comma adds the name, and a name already there is not added twice', async
 
 test('suggests the names already used in the library', async ({ page }) => {
 	const viewer = await openAndEdit(page, 'Abrir Sample_001');
-	const suggested = await viewer.locator('#notes-people option').evaluateAll((options) => options.map((o) => (o as HTMLOptionElement).value));
+	const suggested = await viewer.locator('#notes-person-list option').evaluateAll((options) => options.map((o) => (o as HTMLOptionElement).value));
 	expect(suggested).toEqual(['Ana', 'Luis']);
 });
 

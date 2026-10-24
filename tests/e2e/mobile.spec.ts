@@ -300,7 +300,7 @@ test.describe('annotating on a phone', () => {
 				.filter((el) => el.getClientRects().length > 0)
 				.map((el) => ({
 					name: el.getAttribute('aria-label') ?? el.id ?? el.textContent?.trim() ?? '',
-					remove: el.classList.contains('remove'),
+					remove: el.classList.contains('chip-remove'),
 					box: el.getBoundingClientRect()
 				}))
 				// The little × on a name is smaller on purpose; it still has to be 24px (WCAG 2.2).

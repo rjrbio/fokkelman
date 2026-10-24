@@ -72,3 +72,86 @@ button {
 		transition-duration: 0.01ms !important;
 	}
 }
+
+/* The look of a form in the family area (the photo editor, the bulk edit, the upload): a label over a field. */
+.form-field {
+	display: grid;
+	gap: 0.5rem;
+	min-width: 0;
+}
+
+.form-field > label,
+.form-field > legend {
+	font-size: 0.9rem;
+	color: var(--dim);
+}
+
+.form-field input:not([type='checkbox']),
+.form-field textarea,
+.form-field select {
+	width: 100%;
+	min-height: 44px;
+	padding: 0.5rem 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	background: var(--chip);
+	color: var(--fg);
+}
+
+.form-field textarea {
+	resize: vertical;
+}
+
+/* As specific as the rule above and after it: a bare `[aria-invalid]` would lose to it and the red border would be gone. */
+.form-field :is(input, textarea, select)[aria-invalid='true'] {
+	border-color: var(--danger);
+}
+
+.form-field .hint,
+.form-field .error {
+	margin: 0;
+	font-size: 0.85rem;
+}
+
+.form-field .hint {
+	color: var(--dim);
+}
+
+.form-field .error {
+	color: var(--danger);
+}
+
+.chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.chips li {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	min-height: 32px;
+	padding: 0 0.7rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: var(--chip);
+	font-size: 0.9rem;
+}
+
+.chip-remove {
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	margin-right: -0.5rem;
+	border: none;
+	border-radius: 999px;
+	background: none;
+	color: var(--dim);
+	font-size: 1.1rem;
+	line-height: 1;
+}

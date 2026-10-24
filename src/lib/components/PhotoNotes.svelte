@@ -2,8 +2,6 @@
 	import { tick } from 'svelte';
 	import type { SaveOutcome } from '$lib/annotate.svelte';
 	import {
-		cleanText,
-		fold,
 		MAX_CAPTION_LENGTH,
 		MAX_PERSON_LENGTH,
 		MIN_YEAR,
@@ -14,6 +12,7 @@
 	} from '$lib/annotations';
 	import { es } from '$lib/messages';
 	import type { Photo } from '$lib/types';
+	import PeopleInput from './PeopleInput.svelte';
 
 	// Family area only: the strings are Spanish and come straight from `es`.
 	let {
@@ -34,25 +33,18 @@
 	let caption = $state('');
 	let year = $state('');
 	let people = $state<string[]>([]);
-	/** What has been typed in the person field and not added yet. */
-	let pending = $state('');
 	let error = $state<{ field: DraftField; problem: PatchProblem } | null>(null);
 
 	let form = $state<HTMLFormElement>();
 	let editButton = $state<HTMLElement>();
 	let captionField = $state<HTMLElement>();
 	let yearField = $state<HTMLElement>();
-	let personField = $state<HTMLElement>();
-
-	const available = $derived(
-		suggestions.filter((name) => !people.some((person) => fold(person) === fold(name)))
-	);
+	let peopleInput = $state<PeopleInput>();
 
 	async function startEditing() {
 		caption = photo.caption;
 		year = photo.year === null ? '' : String(photo.year);
 		people = [...photo.people];
-		pending = '';
 		error = null;
 		editing = true;
 		await tick();
@@ -65,54 +57,10 @@
 		editButton?.focus();
 	}
 
-	/** Adds every name in `text` (a comma separates them) that is not in the list yet, whatever its case or accents. */
-	function addPeopleFrom(text: string) {
-		for (const piece of text.split(',')) {
-			const name = cleanText(piece);
-			if (name && !people.some((person) => fold(person) === fold(name))) people.push(name);
-		}
-	}
-
-	/** Takes a name off the list and keeps the focus in the form: the button that had it is gone. */
-	async function removePerson(name: string) {
-		const at = people.indexOf(name);
-		people = people.filter((person) => person !== name);
-		await tick();
-		const buttons = form?.querySelectorAll<HTMLElement>('.remove') ?? [];
-		(buttons[Math.min(at, buttons.length - 1)] ?? personField)?.focus();
-	}
-
 	/** Cancel does nothing while a save is in flight (the button is not `disabled`, so it keeps the focus). */
 	function cancel() {
 		if (saving) return;
 		void stopEditing();
-	}
-
-	function onPersonInput(event: Event & { currentTarget: HTMLInputElement }) {
-		const value = event.currentTarget.value;
-		// Picking a name from the suggestions comes as a replacement, not as typing: it is a name already.
-		// Autocorrect and spell checkers also come as replacements: only a name on offer counts as picked.
-		const picked =
-			(!(event instanceof InputEvent) || event.inputType === 'insertReplacementText') &&
-			available.some((name) => fold(name) === fold(cleanText(value)));
-		if (picked) {
-			addPeopleFrom(value);
-			pending = '';
-		} else if (value.includes(',')) {
-			const cut = value.lastIndexOf(',');
-			addPeopleFrom(value.slice(0, cut));
-			pending = value.slice(cut + 1);
-		} else {
-			pending = value;
-		}
-		event.currentTarget.value = pending;
-	}
-
-	function onPersonKeydown(event: KeyboardEvent) {
-		if (event.key !== 'Enter' || cleanText(pending) === '') return;
-		event.preventDefault(); // adds the name; it does not save the form
-		addPeopleFrom(pending);
-		pending = '';
 	}
 
 	/** Esc leaves the editor, not the viewer: the viewer leaves alone the keys pressed inside a form. */
@@ -125,14 +73,13 @@
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 		if (saving) return;
-		addPeopleFrom(pending);
-		pending = '';
+		peopleInput?.commitPending();
 
 		const result = patchFromDraft(photo, { caption, year, people });
 		if (!result.ok) {
 			error = { field: result.field, problem: result.problem };
 			await tick();
-			({ caption: captionField, year: yearField, people: personField })[result.field]?.focus();
+			({ caption: captionField, year: yearField, people: peopleInput })[result.field]?.focus();
 			return;
 		}
 		error = null;
@@ -188,7 +135,7 @@
 		<button class="button" bind:this={editButton} onclick={startEditing}>{m.edit}</button>
 	{:else}
 		<form bind:this={form} onsubmit={submit} novalidate>
-			<div class="field">
+			<div class="form-field">
 				<label for="notes-caption">{m.caption}</label>
 				<textarea
 					id="notes-caption"
@@ -203,7 +150,7 @@
 				{/if}
 			</div>
 
-			<div class="field">
+			<div class="form-field">
 				<label for="notes-year">{m.year}</label>
 				<input
 					id="notes-year"
@@ -222,48 +169,17 @@
 				{/if}
 			</div>
 
-			<div class="field">
-				<label for="notes-person">{m.people}</label>
-				{#if people.length > 0}
-					<ul class="chips">
-						{#each people as name (name)}
-							<li>
-								{name}
-								<button
-									type="button"
-									class="remove"
-									aria-label={m.removePerson(name)}
-									onclick={() => removePerson(name)}>×</button
-								>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-				<input
-					id="notes-person"
-					type="text"
-					list="notes-people"
-					autocomplete="off"
-					autocorrect="off"
-					spellcheck="false"
-					autocapitalize="words"
-					enterkeyhint="done"
-					placeholder={m.addPerson}
-					bind:this={personField}
-					value={pending}
-					oninput={onPersonInput}
-					onkeydown={onPersonKeydown}
-					aria-invalid={error?.field === 'people'}
-					aria-describedby={error?.field === 'people' ? 'notes-person-error' : 'notes-person-hint'}
-				/>
-				<datalist id="notes-people">
-					{#each available as name (name)}<option value={name}></option>{/each}
-				</datalist>
-				<p class="hint" id="notes-person-hint">{m.addPersonHint}</p>
-				{#if error?.field === 'people'}
-					<p class="error" id="notes-person-error" role="alert">{problemText(error.problem)}</p>
-				{/if}
-			</div>
+			<PeopleInput
+				id="notes-person"
+				label={m.people}
+				bind:this={peopleInput}
+				bind:people
+				{suggestions}
+				hint={m.addPersonHint}
+				placeholder={m.addPerson}
+				removeLabel={m.removePerson}
+				error={error?.field === 'people' ? problemText(error.problem) : undefined}
+			/>
 
 			<div class="buttons">
 				<!-- aria-disabled, not disabled: a disabled button drops the focus, and the keys would then act on the viewer. -->
@@ -300,77 +216,10 @@
 	dd.empty {
 		color: var(--dim);
 	}
-	form,
-	.field {
-		display: grid;
-		gap: 0.5rem;
-		min-width: 0;
-	}
 	form {
-		gap: 0.9rem;
-	}
-	label {
-		font-size: 0.9rem;
-		color: var(--dim);
-	}
-	textarea,
-	input {
-		width: 100%;
-		min-height: 44px;
-		padding: 0.5rem 0.75rem;
-		border: 1px solid var(--line);
-		border-radius: var(--radius);
-		background: var(--chip);
-		color: var(--fg);
-	}
-	textarea {
-		resize: vertical;
-	}
-	[aria-invalid='true'] {
-		border-color: var(--danger);
-	}
-	.chips {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.4rem;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-	.chips li {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.25rem;
-		min-height: 32px;
-		padding: 0 0.7rem;
-		border: 1px solid var(--line);
-		border-radius: 999px;
-		background: var(--chip);
-		font-size: 0.9rem;
-	}
-	.remove {
 		display: grid;
-		place-items: center;
-		width: 28px;
-		height: 28px;
-		margin-right: -0.5rem;
-		border: none;
-		border-radius: 999px;
-		background: none;
-		color: var(--dim);
-		font-size: 1.1rem;
-		line-height: 1;
-	}
-	.hint,
-	.error {
-		margin: 0;
-		font-size: 0.85rem;
-	}
-	.hint {
-		color: var(--dim);
-	}
-	.error {
-		color: var(--danger);
+		gap: 0.9rem;
+		min-width: 0;
 	}
 	.buttons {
 		display: flex;
