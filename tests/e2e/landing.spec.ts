@@ -109,3 +109,13 @@ test('the landing says which features are private', async ({ page }) => {
 	});
 	await expect(family).toContainText('private photos, so not in the demo');
 });
+
+test('the landing describes the cached fallback as the code behaves', async ({ page }) => {
+	await page.goto('/');
+	// The index cache falls back to its copy when the search fails or the calls run out; the search has no
+	// timeout, so a slow Cloudinary is waited for. The page must not promise more than that.
+	const claim = page.getByRole('listitem').filter({ hasText: 'cached copy' });
+	await expect(claim).toHaveCount(1);
+	await expect(claim).toContainText('if Cloudinary errors or runs out of calls');
+	await expect(claim).not.toContainText('slow');
+});

@@ -70,7 +70,7 @@
 				<li><strong>Cloudinary as the only data store</strong> (folders, tags and metadata through its Search API): no database to run</li>
 				<li>The server validates every edit and signs every upload, metadata included</li>
 				<li>Scrypt-hashed password, signed HttpOnly cookie, a limit on sign-in attempts and a strict Content-Security-Policy</li>
-				<li>A server-side photo index that keeps serving a cached copy if Cloudinary is slow or out of calls</li>
+				<li>A server-side photo index that keeps serving a cached copy if Cloudinary errors or runs out of calls</li>
 				<li>Vitest and Playwright tests, including a phone-sized project and automated accessibility checks</li>
 			</ul>
 		</article>
