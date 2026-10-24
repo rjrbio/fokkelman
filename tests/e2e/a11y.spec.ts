@@ -89,6 +89,22 @@ test('the upload dialog, with a queued file', async ({ page }) => {
 	await expectNoA11yViolations(page);
 });
 
+test('the upload dialog, with data that is not valid', async ({ page }) => {
+	await login(page);
+	await hydrated(page);
+	await page.getByRole('button', { name: 'Subir', exact: true }).click();
+	const dialog = page.getByRole('dialog', { name: 'Subir fotos' });
+	await page.setInputFiles('input[type=file]', {
+		name: 'holiday.jpg',
+		mimeType: 'image/jpeg',
+		buffer: Buffer.from('fake-image-bytes')
+	});
+	await dialog.getByLabel('Año').fill('abc');
+	await dialog.getByRole('button', { name: 'Subir todo' }).click();
+	await dialog.getByRole('alert').waitFor();
+	await expectNoA11yViolations(page);
+});
+
 test('the public demo', async ({ page }) => {
 	await page.goto('/demo');
 	await hydrated(page);

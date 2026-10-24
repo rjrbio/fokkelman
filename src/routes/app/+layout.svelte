@@ -146,7 +146,12 @@
 {/if}
 
 {#if showUpload}
-	<UploadModal folder={filters.folder} onClose={onUploadClosed} />
+	<UploadModal
+		folder={filters.folder}
+		folders={uniqueFolders(photos)}
+		suggestions={knownPeople(photos)}
+		onClose={onUploadClosed}
+	/>
 {/if}
 
 {@render children()}

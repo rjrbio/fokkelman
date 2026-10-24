@@ -40,7 +40,7 @@ describe('signParams', () => {
 describe('createUploadSignature', () => {
 	it('returns everything the browser needs for a signed upload', () => {
 		const cfg = makeConfig(fetch);
-		const sig = createUploadSignature(cfg, 'family_uploads', 1700000000000);
+		const sig = createUploadSignature(cfg, 'family_uploads', { now: 1700000000000 });
 		expect(sig).toEqual({
 			cloudName: 'testcloud',
 			apiKey: 'key123',
@@ -48,6 +48,27 @@ describe('createUploadSignature', () => {
 			folder: 'family_uploads',
 			signature: signParams({ folder: 'family_uploads', timestamp: 1700000000 }, 'secret123')
 		});
+	});
+});
+
+describe('createUploadSignature with a context', () => {
+	it('signs the context too, and hands it back to be sent as it is', () => {
+		const sig = createUploadSignature(makeConfig(fetch), 'family_uploads', {
+			context: 'caption=Playa|year=1975',
+			now: 1700000000000
+		});
+		expect(sig.context).toBe('caption=Playa|year=1975');
+		expect(sig.signature).toBe(
+			createHash('sha1')
+				.update('context=caption=Playa|year=1975&folder=family_uploads&timestamp=1700000000secret123')
+				.digest('hex')
+		);
+	});
+
+	it('has no context in it, nor in the signature, when there is none', () => {
+		const sig = createUploadSignature(makeConfig(fetch), 'family_uploads', { now: 1700000000000 });
+		expect(sig).not.toHaveProperty('context');
+		expect(createUploadSignature(makeConfig(fetch), 'family_uploads', { context: '', now: 1700000000000 })).toEqual(sig);
 	});
 });
 

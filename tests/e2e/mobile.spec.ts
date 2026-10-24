@@ -219,6 +219,48 @@ test('the upload tab opens a dialog that fits the screen', async ({ page }) => {
 	expect(box.x + box.width).toBeLessThanOrEqual(412);
 });
 
+test('the controls of the upload dialog are big enough for a finger, and the data fits the screen', async ({ page }) => {
+	await tabs(page).getByRole('button', { name: 'Subir' }).tap();
+	const dialog = page.getByRole('dialog', { name: 'Subir fotos' });
+	await page.setInputFiles('input[type=file]', {
+		name: 'holiday.jpg',
+		mimeType: 'image/jpeg',
+		buffer: Buffer.from('fake-image-bytes')
+	});
+	await dialog.getByLabel('Personas').fill('Ana,');
+	await expect(dialog.getByRole('button', { name: 'Quitar a Ana' })).toBeVisible();
+
+	const { checked, small, wide } = await dialog.evaluate((node) => {
+		const measured = [...node.querySelectorAll<HTMLElement>('button, input:not(.sr-only), textarea, select')]
+			.filter((el) => el.getClientRects().length > 0)
+			.map((el) => ({
+				name: el.getAttribute('aria-label') ?? el.id ?? el.textContent?.trim() ?? '',
+				remove: el.classList.contains('chip-remove'),
+				box: el.getBoundingClientRect()
+			}));
+		const edge = node.getBoundingClientRect().right;
+		return {
+			checked: measured.map(({ name }) => name),
+			// The little × on a name is smaller on purpose; it still has to be 24px (WCAG 2.2).
+			small: measured
+				.filter(({ remove, box }) => (remove ? box.width < 24 || box.height < 24 : box.height < 44))
+				.map(({ name, box }) => `${name}: ${Math.round(box.width)}×${Math.round(box.height)}`),
+			wide: measured.filter(({ box }) => box.right > edge + 1).map(({ name }) => name)
+		};
+	});
+	// The collection, the description, the year, the names, "Subir todo", "Cerrar": without this, a selector
+	// that matches nothing would make the test pass vacuously.
+	expect(checked.length, `measured: ${JSON.stringify(checked)}`).toBeGreaterThanOrEqual(6);
+	expect(small).toEqual([]);
+	expect(wide).toEqual([]);
+
+	for (const name of ['Subir todo', 'Cerrar']) {
+		const button = dialog.getByRole('button', { name, exact: true });
+		await button.scrollIntoViewIfNeeded();
+		await expect(button).toBeInViewport({ ratio: 1 });
+	}
+});
+
 test.describe('viewer', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.getByRole('button', { name: 'Abrir Sample_001' }).tap();

@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Locator, type Page, type Request } from '@playwright/test';
 
 const TINY_PNG = Buffer.from(
 	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -93,6 +93,17 @@ export async function storedContext(publicId: string): Promise<Record<string, st
 	};
 	const context = state.family.find((photo) => photo.public_id === publicId)?.context;
 	return context && Object.keys(context).length > 0 ? context : undefined;
+}
+
+/** The text fields of a `multipart/form-data` request (the files are left out). */
+export function multipartFields(request: Request): Record<string, string> {
+	const boundary = (request.headers()['content-type'] ?? '').split('boundary=')[1];
+	const fields: Record<string, string> = {};
+	for (const part of (request.postDataBuffer()?.toString('utf8') ?? '').split(`--${boundary}`)) {
+		const name = part.match(/Content-Disposition: form-data; name="([^"]+)"(?!; filename)/)?.[1];
+		if (name && !part.includes('; filename=')) fields[name] = part.split('\r\n\r\n')[1]?.replace(/\r\n$/, '') ?? '';
+	}
+	return fields;
 }
 
 /** The ids of the photos the Cloudinary mock has tagged as favorites, in the order the mock has them. */

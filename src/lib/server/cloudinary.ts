@@ -24,13 +24,18 @@ export interface UploadSignature {
 	apiKey: string;
 	timestamp: number;
 	folder: string;
+	/**
+	 * What the new photo gets as its context (`key=value|key=value`). It is part of what is signed, so the
+	 * browser has to send exactly this and nothing else. Absent when the photo gets none.
+	 */
+	context?: string;
 	signature: string;
 }
 
 export function createUploadSignature(
 	cfg: CloudinaryConfig,
 	folder: string,
-	now: number = Date.now()
+	{ context, now = Date.now() }: { context?: string; now?: number } = {}
 ): UploadSignature {
 	const timestamp = Math.floor(now / 1000);
 	return {
@@ -38,7 +43,8 @@ export function createUploadSignature(
 		apiKey: cfg.apiKey,
 		timestamp,
 		folder,
-		signature: signParams({ folder, timestamp }, cfg.apiSecret)
+		...(context ? { context } : {}),
+		signature: signParams({ folder, timestamp, ...(context ? { context } : {}) }, cfg.apiSecret)
 	};
 }
 

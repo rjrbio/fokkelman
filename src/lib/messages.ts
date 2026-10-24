@@ -85,10 +85,15 @@ export const es = {
 	},
 	upload: {
 		title: 'Subir fotos',
-		destination: 'Destino:',
+		destination: 'Colección',
+		data: 'Datos de las fotos',
+		dataHint: 'Los mismos para todas las fotos de esta subida. Puedes dejarlos en blanco.',
 		dropzone: 'Arrastra las fotos aquí o haz clic para elegirlas',
 		skipped: (n: number) =>
 			`${n} ${pluralEs(n, 'archivo omitido', 'archivos omitidos')} (repetido o no es una imagen).`,
+		tooBig: (n: number) =>
+			`${n} ${pluralEs(n, 'archivo omitido', 'archivos omitidos')} por pesar más de 10 MB.`,
+		invalidData: 'Revisa los datos de las fotos antes de subirlas.',
 		waiting: 'En cola',
 		done: 'Subida',
 		failed: 'Falló',

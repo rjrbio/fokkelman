@@ -1,7 +1,22 @@
 <script lang="ts">
+	import { tick, untrack } from 'svelte';
+	import {
+		noAnnotation,
+		patchFromDraft,
+		type DraftField,
+		type PatchProblem
+	} from '$lib/annotations';
 	import { focusTrap } from '$lib/dom';
 	import { es } from '$lib/messages';
-	import { fileKey, splitSelection } from '$lib/uploadFiles';
+	import { problemText } from '$lib/problemText';
+	import {
+		DEFAULT_UPLOAD_FOLDER,
+		fileKey,
+		runWithLimit,
+		splitSelection,
+		UPLOAD_CONCURRENCY
+	} from '$lib/uploadFiles';
+	import PeopleInput from './PeopleInput.svelte';
 
 	interface UploadItem {
 		file: File;
@@ -9,7 +24,20 @@
 		progress: number;
 	}
 
-	let { folder, onClose }: { folder: string; onClose: (uploadedCount: number) => void } = $props();
+	let {
+		folder,
+		folders,
+		suggestions,
+		onClose
+	}: {
+		/** The collection the gallery is showing: where the photos go unless another one is chosen. */
+		folder: string;
+		/** The collections that exist. */
+		folders: string[];
+		/** Names already used in the library, most used first. */
+		suggestions: string[];
+		onClose: (uploadedCount: number) => void;
+	} = $props();
 
 	const m = es.upload;
 
@@ -17,27 +45,63 @@
 	let busy = $state(false);
 	let notice = $state('');
 
+	// What the new photos are to be called: the same for all of them, and all of it optional.
+	// Starts at the collection being looked at; the person can change it, and the gallery moving on does not.
+	let chosenFolder = $state(untrack(() => folder || DEFAULT_UPLOAD_FOLDER));
+	let caption = $state('');
+	let year = $state('');
+	// A proxy on purpose: `PeopleInput` adds names with `push`, and only a `$state` array notices that.
+	let people = $state<string[]>([]);
+	let error = $state<{ field: DraftField; problem: PatchProblem } | null>(null);
+	let captionField = $state<HTMLElement>();
+	let yearField = $state<HTMLElement>();
+	let peopleInput = $state<PeopleInput>();
+
+	const collections = $derived([DEFAULT_UPLOAD_FOLDER, ...folders.filter((name) => name !== DEFAULT_UPLOAD_FOLDER)]);
 	const doneCount = $derived(items.filter((i) => i.status === 'done').length);
 
 	function addFiles(files: FileList | null) {
 		if (!files) return;
-		const { accepted, duplicates, rejected } = splitSelection(
+		const { accepted, duplicates, rejected, tooBig } = splitSelection(
 			[...files],
 			new Set(items.map((item) => fileKey(item.file)))
 		);
 		for (const file of accepted) items.push({ file, status: 'pending', progress: 0 });
 		const skipped = duplicates.length + rejected.length;
-		notice = skipped > 0 ? m.skipped(skipped) : '';
+		notice = [skipped > 0 ? m.skipped(skipped) : '', tooBig.length > 0 ? m.tooBig(tooBig.length) : '']
+			.filter(Boolean)
+			.join(' ');
 	}
 
-	async function uploadOne(item: UploadItem) {
+	/** What to tell the server about the photos, or why it cannot be said yet (and the field to go to). */
+	async function metadata(): Promise<Record<string, unknown> | null> {
+		peopleInput?.commitPending();
+		const result = patchFromDraft(noAnnotation(), { caption, year, people });
+		if (!result.ok) {
+			error = { field: result.field, problem: result.problem };
+			notice = m.invalidData;
+			await tick();
+			({ caption: captionField, year: yearField, people: peopleInput })[result.field]?.focus();
+			return null;
+		}
+		error = null;
+		const patch = result.patch;
+		return {
+			folder: chosenFolder,
+			...(patch?.caption ? { caption: patch.caption } : {}),
+			...(patch?.year ? { year: patch.year } : {}),
+			...(patch?.addPeople ? { people: patch.addPeople } : {})
+		};
+	}
+
+	async function uploadOne(item: UploadItem, data: Record<string, unknown>) {
 		item.status = 'uploading';
 		item.progress = 0;
 		try {
 			const sigRes = await fetch('/api/upload-signature', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ folder })
+				body: JSON.stringify(data)
 			});
 			if (!sigRes.ok) throw new Error('signature failed');
 			const sig = (await sigRes.json()) as {
@@ -45,6 +109,7 @@
 				apiKey: string;
 				timestamp: number;
 				folder: string;
+				context?: string;
 				signature: string;
 			};
 
@@ -54,6 +119,8 @@
 			form.append('timestamp', String(sig.timestamp));
 			form.append('signature', sig.signature);
 			form.append('folder', sig.folder);
+			// Exactly what the server signed: Cloudinary refuses an upload whose context is not the signed one.
+			if (sig.context) form.append('context', sig.context);
 
 			await new Promise<void>((resolve, reject) => {
 				const xhr = new XMLHttpRequest();
@@ -72,11 +139,24 @@
 		}
 	}
 
-	async function uploadAll() {
+	async function retry(item: UploadItem) {
+		if (busy) return;
+		const data = await metadata();
+		if (!data) return;
+		notice = '';
+		// Busy like any other upload: the data stays as it was read, and no second photo goes up beside it.
 		busy = true;
-		for (const item of items) {
-			if (item.status === 'pending' || item.status === 'error') await uploadOne(item);
-		}
+		await uploadOne(item, data);
+		busy = false;
+	}
+
+	async function uploadAll() {
+		const data = await metadata();
+		if (!data) return;
+		busy = true;
+		notice = '';
+		const waiting = items.filter((i) => i.status === 'pending' || i.status === 'error');
+		await runWithLimit(waiting, UPLOAD_CONCURRENCY, (item) => uploadOne(item, data));
 		busy = false;
 	}
 
@@ -95,7 +175,6 @@
 <div class="backdrop" role="presentation">
 	<div class="modal" role="dialog" aria-modal="true" aria-label={m.title} tabindex="-1" use:focusTrap>
 		<h2>{m.title}</h2>
-		<p class="hint">{m.destination} <strong>{folder || 'family_uploads'}</strong></p>
 
 		<label
 			class="dropzone"
@@ -131,7 +210,7 @@
 							<span class="ok">{m.done}</span>
 						{:else if item.status === 'error'}
 							<span class="ko">{m.failed}</span>
-							<button class="small" onclick={() => uploadOne(item)}>{m.retry}</button>
+							<button class="small" onclick={() => retry(item)} disabled={busy}>{m.retry}</button>
 						{:else}
 							<span class="dim">{m.waiting}</span>
 						{/if}
@@ -139,6 +218,66 @@
 				{/each}
 			</ul>
 		{/if}
+
+		<fieldset class="data" disabled={busy}>
+			<legend>{m.data}</legend>
+			<p class="hint">{m.dataHint}</p>
+
+			<div class="form-field">
+				<label for="upload-folder">{m.destination}</label>
+				<select id="upload-folder" bind:value={chosenFolder}>
+					{#each collections as name (name)}
+						<option value={name}>{name}</option>
+					{/each}
+				</select>
+			</div>
+
+			<div class="form-field">
+				<label for="upload-caption">{es.notes.caption}</label>
+				<textarea
+					id="upload-caption"
+					rows="2"
+					bind:this={captionField}
+					bind:value={caption}
+					aria-invalid={error?.field === 'caption'}
+					aria-describedby={error?.field === 'caption' ? 'upload-caption-error' : undefined}
+				></textarea>
+				{#if error?.field === 'caption'}
+					<p class="error" id="upload-caption-error" role="alert">{problemText(error.problem)}</p>
+				{/if}
+			</div>
+
+			<div class="form-field">
+				<label for="upload-year">{es.notes.year}</label>
+				<input
+					id="upload-year"
+					type="text"
+					inputmode="numeric"
+					autocomplete="off"
+					maxlength="4"
+					placeholder={es.notes.yearHint}
+					bind:this={yearField}
+					bind:value={year}
+					aria-invalid={error?.field === 'year'}
+					aria-describedby={error?.field === 'year' ? 'upload-year-error' : undefined}
+				/>
+				{#if error?.field === 'year'}
+					<p class="error" id="upload-year-error" role="alert">{problemText(error.problem)}</p>
+				{/if}
+			</div>
+
+			<PeopleInput
+				id="upload-person"
+				label={es.notes.people}
+				bind:this={peopleInput}
+				bind:people
+				{suggestions}
+				hint={es.notes.addPersonHint}
+				placeholder={es.notes.addPerson}
+				removeLabel={es.notes.removePerson}
+				error={error?.field === 'people' ? problemText(error.problem) : undefined}
+			/>
+		</fieldset>
 
 		<div class="footer">
 			<button class="primary" onclick={uploadAll} disabled={busy || items.length === 0}>
@@ -221,6 +360,19 @@
 	.dim {
 		color: var(--dim);
 	}
+	.data {
+		display: grid;
+		gap: 0.9rem;
+		min-width: 0;
+		margin: 0;
+		padding: 0.9rem 0 0;
+		border: none;
+		border-top: 1px solid var(--line);
+	}
+	.data legend {
+		padding: 0 0.5rem 0 0;
+		font-weight: 600;
+	}
 	.footer {
 		display: flex;
 		gap: 0.5rem;
@@ -244,7 +396,8 @@
 		color: var(--on-accent);
 		font-weight: 600;
 	}
-	.footer button:disabled {
+	.footer button:disabled,
+	.small:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}

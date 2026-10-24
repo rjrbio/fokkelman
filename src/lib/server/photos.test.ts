@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_UPLOAD_FOLDER } from '$lib/uploadFiles';
 import { resolveUploadFolder, UPLOAD_FOLDER } from './photos';
 
 describe('resolveUploadFolder', () => {
@@ -26,5 +27,11 @@ describe('resolveUploadFolder', () => {
 
 	it('falls back to the default folder for an empty request', () => {
 		expect(resolveUploadFolder('', ['family_uploads'])).toBe(UPLOAD_FOLDER);
+	});
+});
+
+describe('the default upload folder', () => {
+	it('is the same one the browser offers', () => {
+		expect(UPLOAD_FOLDER).toBe(DEFAULT_UPLOAD_FOLDER);
 	});
 });
